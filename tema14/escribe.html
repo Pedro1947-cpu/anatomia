@@ -53,7 +53,7 @@ function start(){const v=sel.value;deck=[];SLIDES.forEach((s,si)=>{if(v==='all'|
 function ask(){state='ask';if(pos>=deck.length)return end();const[si,bi]=deck[pos],s=SLIDES[si];
  $('cnt').textContent=(pos+1)+' / '+deck.length;$('bar').style.width=pos/deck.length*100+'%';
  $('wrap').innerHTML=`<div class="fig" id="fig"><img src="${s.img}" alt=""></div><div class="q">${(s.q&&s.q[bi])||"¿Qué es la parte marcada?"}</div>
- <div class="frm"><input id="in" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Escribe aquí…"><button id="go" type="button">→</button></div><div class="fb" id="fb"></div>`;
+ <div class="frm"><input id="in" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Escribe aquí…"><button id="go" type="button">→</button></div><div class="fb" id="fb"></div>`;
  const fig=$('fig');s.boxes.forEach((b,i)=>{const d=document.createElement('div');d.className='b'+(i===bi?' cur':'');
   Object.assign(d.style,{left:b[0]/s.w*100+'%',top:b[1]/s.h*100+'%',width:(b[2]-b[0])/s.w*100+'%',height:(b[3]-b[1])/s.h*100+'%'});fig.appendChild(d)});
  
@@ -63,7 +63,7 @@ addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing&&document.getE
 function check(){state='done';const[si,bi]=deck[pos],ans=SLIDES[si].ans[bi],v=$('in').value,r=judge(v,ans);$('in').readOnly=true;$('go').textContent='Siguiente →';$('go').style.padding='0 18px';
  if(r===2){score++;$('fb').innerHTML=`<span class="ok">Bien ✓</span><small>${ans}</small>`}
  else if(r===1){score+=.5;$('fb').innerHTML=`<span class="ok">Casi · medio punto</span><small>Completo: ${ans}</small>`;wrong.push(deck[pos])}
- else{$('fb').innerHTML=`<span class="no">${v.trim()?'No':'Era'}</span><small>${ans}</small>`;wrong.push(deck[pos])}
+ else{const esc=v.replace(/[<>&]/g,'');$('fb').innerHTML=`<span class="no">${v.trim()?'No':'Era'}</span><small>${ans}${v.trim()?' · has escrito: «'+esc+'»':''}</small>`;wrong.push(deck[pos])}
  $('bar').style.width=(pos+1)/deck.length*100+'%'}
 function end(){$('cnt').textContent='';$('wrap').innerHTML=`<div class="end"><b>${score} / ${deck.length}</b>${wrong.length?wrong.length+' para repasar':'Pleno ✨'}<br>
  ${wrong.length?'<button id="rw">Repetir solo los fallos</button> ':''}<button id="ag" style="background:transparent;color:var(--fg);border:1px solid var(--line)">Otra vez todo</button></div>`;
