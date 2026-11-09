@@ -45,7 +45,7 @@ const ST={k:'t14stats',get(){try{return JSON.parse(localStorage.getItem(this.k)|
  add(n,asked,pts){const s=this.get();const r=s[n]||{a:0,p:0};r.a+=asked;r.p+=pts;r.t=Date.now();s[n]=r;try{localStorage.setItem(this.k,JSON.stringify(s))}catch(e){}},
  rows(){const s=this.get();const rs=SLIDES.map(x=>{const r=s[x.n]||{a:0,p:0};const v=r.a/x.ans.length,pc=r.a?r.p/r.a*100:null;return {n:x.n,t:x.t,v,pc,sc:(v>=3?3:v)+(pc===null?0:pc/50)}});
   const ord=rs.slice().sort((a,b)=>a.sc-b.sc);ord.slice(0,2).forEach(r=>r.pr=1);return rs},
- html(){return '<table class="st"><thead><tr><th>Diap.</th><th>Vueltas</th><th>Acierto</th><th></th></tr></thead><tbody>'+this.rows().map(r=>`<tr${r.pr?' class="pr"':''}><td><b>${r.n}</b> <span>${r.t}</span></td><td>${r.v.toFixed(1).replace('.0','')}</td><td>${r.pc===null?'—':Math.round(r.pc)+'%'}</td><td>${r.pr?'⚑':''}</td></tr>`).join('')+'</tbody></table><div class="stn">⚑ = prioriza estas. Vueltas = rótulos respondidos ÷ rótulos de la diapositiva (cuentan las dos páginas).</div>'}};
+ html(){return '<table class="st"><thead><tr><th>Diap.</th><th>Vueltas</th><th>Acierto</th><th></th></tr></thead><tbody>'+this.rows().map(r=>`<tr${r.pr?' class="pr"':''}><td><b>${r.n}</b> <span>${r.t}</span></td><td>${r.v.toFixed(1).replace('.0','')}</td><td>${r.pc===null?'—':Math.round(r.pc)+'%'}</td><td>${r.pr?'⚑':''}</td></tr>`).join('')+'</tbody></table><div class="stn">⚑ = prioriza estas. Vueltas = rótulos respondidos ÷ rótulos de la diapositiva.</div>'}};
 
 const $=i=>document.getElementById(i);
 const norm=s=>s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[()]/g,' ').replace(/\b(el|la|los|las|de|del)\b/g,' ').replace(/[^a-z0-9>-]+/g,' ').trim().replace(/\s+/g,' ');
