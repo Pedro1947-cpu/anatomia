@@ -20,6 +20,7 @@ body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 ui-rounded,"SF 
 input{flex:1;font:inherit;font-size:18px;padding:12px 2px;border:0;border-bottom:2px solid var(--line);background:transparent;color:var(--fg);outline:none;transition:border-color .2s}
 input:focus{border-color:var(--ac)}
 button{font:inherit;border:0;background:var(--fg);color:var(--bg);padding:0 20px;border-radius:999px;cursor:pointer}
+.tag{display:inline-block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ac);border:1px solid var(--ac);border-radius:999px;padding:1px 8px;margin-bottom:6px;font-family:system-ui}
 .fb{min-height:48px;text-align:center;font-size:15px}
 .fb .ok{color:var(--ok);font-weight:600}.fb .no{color:var(--no);font-weight:600}.fb small{display:block;color:var(--mut);margin-top:2px}
 .end{text-align:center}.end b{font-size:44px;font-family:Georgia,serif;display:block}
@@ -34,7 +35,7 @@ button{font:inherit;border:0;background:var(--fg);color:var(--bg);padding:0 20px
 @media(max-width:1260px){.side{position:static;width:min(100%,520px);margin:0 auto 12px}}
 .side.closed .body{display:none}
 </style></head><body>
-<div class="top"><select id="sel"></select><span id="cnt"></span></div>
+<div class="top"><span><select id="sel"></select> · <select id="mode"><option value="smart">Prioriza mis fallos</option><option value="rnd">Al azar</option></select></span><span id="cnt"></span></div>
 <div class="prog"><i id="bar"></i></div>
 <div class="wrap" id="wrap"></div>
 <aside class="side" id="side"><h3 onclick="this.parentNode.classList.toggle('closed')">Práctica por diapositiva ▾</h3><div class="body" id="stb"></div></aside>
@@ -62,12 +63,17 @@ function judge(inp,ans){const W={uno:1,primera:1,dos:2,segunda:2,tres:3,tercera:
  const lg=w.slice().sort((x,y)=>y.length-x.length)[0];if(w.length>1&&hit(lg)&&h.length>=Math.ceil(w.length/2))return 1;return 0}
 let deck=[],pos=0,score=0,wrong=[],state='ask';
 const sel=$('sel');sel.innerHTML='<option value="all">Todo el tema 14</option>'+SLIDES.map((s,i)=>`<option value="${i}">Diap. ${s.n} · ${s.t}</option>`).join('');
+const IT={k:'t14items',d:null,get(){if(!this.d){try{this.d=JSON.parse(localStorage.getItem(this.k)||'{}')}catch(e){this.d={}}}return this.d},
+ rec(id,r){const d=this.get(),x=d[id]||{s:0,c:0,w:0};x.s++;if(r===2){x.c++}else{x.c=0;x.w++}x.t=Date.now();d[id]=x;try{localStorage.setItem(this.k,JSON.stringify(d))}catch(e){}},
+ w(id){const x=this.get()[id];if(!x)return 2;return Math.pow((1+x.w*3)/(1+x.c*x.c),2)}};
+let again={};
 function start(){const v=sel.value;deck=[];SLIDES.forEach((s,si)=>{if(v==='all'||+v===si)s.ans.forEach((_,bi)=>deck.push([si,bi]))});
- for(let i=deck.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[deck[i],deck[j]]=[deck[j],deck[i]]}
- pos=0;score=0;wrong=[];ask()}
+ if($('mode').value==='smart'){const k=deck.map(d=>[Math.pow(Math.random(),1/IT.w(SLIDES[d[0]].n+'-'+d[1])),d]);k.sort((a,b)=>b[0]-a[0]);deck=k.map(x=>x[1])}
+ else for(let i=deck.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[deck[i],deck[j]]=[deck[j],deck[i]]}
+ pos=0;score=0;wrong=[];again={};ask()}
 function ask(){state='ask';if(pos>=deck.length)return end();const[si,bi]=deck[pos],s=SLIDES[si];
  $('cnt').textContent=(pos+1)+' / '+deck.length;$('bar').style.width=pos/deck.length*100+'%';
- $('wrap').innerHTML=`<div class="fig" id="fig"><img src="${s.img}" alt=""></div><div class="q">${(s.q&&s.q[bi])||"¿Qué es la parte marcada?"}</div>
+ $('wrap').innerHTML=`<div class="fig" id="fig"><img src="${s.img}" alt=""></div>${(()=>{const x=IT.get()[s.n+"-"+bi];return again[pos]?'<div class="tag">Otra vez · lo fallaste hace un momento</div>':(x&&x.w&&x.c===0?'<div class="tag">Lo fallaste la última vez</div>':"")})()}<div class="q">${(s.q&&s.q[bi])||"¿Qué es la parte marcada?"}</div>
  <div class="frm"><input id="in" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Escribe aquí…"><button id="go" type="button">→</button></div><div class="fb" id="fb"></div>`;
  const fig=$('fig');s.boxes.forEach((b,i)=>{const d=document.createElement('div');d.className='b'+(i===bi?' cur':'');
   Object.assign(d.style,{left:b[0]/s.w*100+'%',top:b[1]/s.h*100+'%',width:(b[2]-b[0])/s.w*100+'%',height:(b[3]-b[1])/s.h*100+'%'});fig.appendChild(d)});
@@ -76,7 +82,8 @@ function ask(){state='ask';if(pos>=deck.length)return end();const[si,bi]=deck[po
 function step(){if(state==='ask')check();else if(state==='done'){pos++;ask()}}
 addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing&&document.getElementById('in')){e.preventDefault();step()}});
 function check(){state='done';const[si,bi]=deck[pos],ans=SLIDES[si].ans[bi],v=$('in').value,r=judge(v,ans);$('in').readOnly=true;$('go').textContent='Siguiente →';$('go').style.padding='0 18px';
- const sn=SLIDES[si].n;ST.add(sn,1,r===2?1:r===1?.5:0);$('stb').innerHTML=ST.html();
+ const sn=SLIDES[si].n;IT.rec(sn+'-'+bi,r);const key=si+'-'+bi;if(r<2&&$('mode').value==='smart'&&(again['n'+key]||0)<2){again['n'+key]=(again['n'+key]||0)+1;const at=Math.min(pos+4,deck.length);deck.splice(at,0,deck[pos]);for(const k in again)if(!isNaN(k)&&+k>=at)again[+k+1]=again[k],delete again[k];again[at]=1}
+ ST.add(sn,1,r===2?1:r===1?.5:0);$('stb').innerHTML=ST.html();
  if(r===2){score++;$('fb').innerHTML=`<span class="ok">Bien ✓</span><small>${ans}</small>`}
  else if(r===1){score+=.5;$('fb').innerHTML=`<span class="ok">Casi · medio punto</span><small>Completo: ${ans}</small>`;wrong.push(deck[pos])}
  else{const esc=v.replace(/[<>&]/g,'');$('fb').innerHTML=`<span class="no">${v.trim()?'No':'Era'}</span><small>${ans}${v.trim()?' · has escrito: «'+esc+'»':''}</small>`;wrong.push(deck[pos])}
@@ -84,5 +91,5 @@ function check(){state='done';const[si,bi]=deck[pos],ans=SLIDES[si].ans[bi],v=$(
 function end(){$('cnt').textContent='';$('wrap').innerHTML=`<div class="end"><b>${score} / ${deck.length}</b>${wrong.length?wrong.length+' para repasar':'Pleno ✨'}<br>
  ${wrong.length?'<button id="rw">Repetir solo los fallos</button> ':''}<button id="ag" style="background:transparent;color:var(--fg);border:1px solid var(--line)">Otra vez todo</button></div>`;
  if(wrong.length)$('rw').onclick=()=>{deck=wrong;wrong=[];pos=0;score=0;ask()};$('ag').onclick=start}
-sel.onchange=start;$('stb').innerHTML=ST.html();start();
+sel.onchange=start;$('mode').onchange=start;$('stb').innerHTML=ST.html();start();
 </script></body></html>
