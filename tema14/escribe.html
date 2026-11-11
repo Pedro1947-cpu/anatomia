@@ -173,5 +173,5 @@ sel.onchange=()=>{start();updTot()};start();
  window.t14sync=()=>{if(getC())sync()};draw();if(getC())sync();setInterval(()=>{if(!document.hidden&&getC()&&state!=='done')sync()},20000);document.addEventListener('visibilitychange',()=>{if(!document.hidden&&getC())sync()});
 })();
 
-(function(){const B='11111013';fetch('../version.txt?'+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():'').then(v=>{v=(v||'').trim();if(v&&v!==B&&sessionStorage.getItem('t14rl')!==v){sessionStorage.setItem('t14rl',v);location.replace(location.pathname+'?v='+v)}}).catch(()=>{})})();
+(function(){const B='11111104';fetch('../version.txt?'+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():'').then(v=>{v=(v||'').trim();if(v&&v!==B&&sessionStorage.getItem('t14rl')!==v){sessionStorage.setItem('t14rl',v);location.replace(location.pathname+'?v='+v)}}).catch(()=>{})})();
 </script></body></html>
