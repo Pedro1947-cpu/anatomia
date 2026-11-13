@@ -14,8 +14,9 @@ import android.os.PowerManager
 import android.provider.Settings
 import android.text.InputType
 import android.view.View
-import android.widget.Button
+import android.view.Gravity
 import android.widget.EditText
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import org.json.JSONObject
@@ -36,18 +37,25 @@ class MainActivity : Activity() {
     private lateinit var prefs: Prefs
     private val es = Locale("es", "ES")
     private val handler = Handler(Looper.getMainLooper())
+    private var wasRecording = false
     private val ticker = object : Runnable {
         override fun run() {
-            refreshStatus()
+            if (RecorderService.isRecording || wasRecording) refreshStatus()
+            wasRecording = RecorderService.isRecording
             handler.postDelayed(this, 1000)
         }
     }
 
-    private val tvStatus by lazy { findViewById<TextView>(R.id.tvStatus) }
-    private val tvDrive by lazy { findViewById<TextView>(R.id.tvDrive) }
-    private val tvPerms by lazy { findViewById<TextView>(R.id.tvPerms) }
-    private val btnPerms by lazy { findViewById<Button>(R.id.btnPerms) }
-    private val btnUpdate by lazy { findViewById<Button>(R.id.btnUpdate) }
+    private val card by lazy { findViewById<LinearLayout>(R.id.card) }
+    private val cardDot by lazy { findViewById<View>(R.id.cardDot) }
+    private val cardLabel by lazy { findViewById<TextView>(R.id.cardLabel) }
+    private val cardTitle by lazy { findViewById<TextView>(R.id.cardTitle) }
+    private val cardTimer by lazy { findViewById<TextView>(R.id.cardTimer) }
+    private val cardSub by lazy { findViewById<TextView>(R.id.cardSub) }
+    private val driveRows by lazy { findViewById<LinearLayout>(R.id.driveRows) }
+    private val permRows by lazy { findViewById<LinearLayout>(R.id.permRows) }
+    private val btnUpdate by lazy { findViewById<TextView>(R.id.btnUpdate) }
+    private var driveState = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,13 +64,11 @@ class MainActivity : Activity() {
         Notifs.createChannels(this)
         if (!RecorderService.isRecording) Store.recoverInterrupted(this)
 
-        findViewById<Button>(R.id.btnDrive).setOnClickListener { askScriptUrl() }
-        btnPerms.setOnClickListener { requestNextPermission() }
         btnUpdate.setOnClickListener { pendingUpdate?.let { doUpdate(it) } }
 
         handleIntent(intent)
         checkUpdate()
-        if (prefs.scriptUrl.isNotBlank()) testConnection()
+        testConnection()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -86,6 +92,7 @@ class MainActivity : Activity() {
         RecorderService.listener = { runOnUiThread { refreshStatus() } }
         Scheduler.reschedule(this)
         refreshStatus()
+        refreshDrive()
         refreshPermissions()
         handler.post(ticker)
     }
@@ -99,24 +106,97 @@ class MainActivity : Activity() {
     // ---------- Estado ----------
 
     private fun refreshStatus() {
-        val lines = mutableListOf<String>()
+        val hm = SimpleDateFormat("HH:mm", es)
         if (RecorderService.isRecording) {
+            card.setBackgroundResource(R.drawable.card_filled)
+            cardDot.visibility = View.VISIBLE
+            cardLabel.text = "Grabando"
+            cardLabel.setTextColor(getColor(R.color.on_fg_muted))
+            cardTitle.setTextColor(getColor(R.color.on_fg))
+            cardSub.setTextColor(getColor(R.color.on_fg_muted))
+            cardTitle.text = RecorderService.currentTitle.ifEmpty { "Clase" }
             val secs = (System.currentTimeMillis() - RecorderService.startedAt) / 1000
-            lines += "● Grabando  %d:%02d:%02d".format(secs / 3600, secs / 60 % 60, secs % 60)
+            cardTimer.visibility = View.VISIBLE
+            cardTimer.text = "%d:%02d:%02d".format(secs / 3600, secs / 60 % 60, secs % 60)
+            val stopAt = prefs.stopAt
+            cardSub.text = if (stopAt > 0) "Termina a las " + hm.format(Date(stopAt)) else ""
+            return
         }
+        card.setBackgroundResource(R.drawable.card_outline)
+        cardDot.visibility = View.GONE
+        cardTimer.visibility = View.GONE
+        cardLabel.text = "Próxima clase"
+        cardLabel.setTextColor(getColor(R.color.muted))
+        cardTitle.setTextColor(getColor(R.color.fg))
+        cardSub.setTextColor(getColor(R.color.fg))
         val next = if (CalendarSource.hasPermission(this)) Scheduler.next(this) else null
-        lines += if (next != null) {
-            "Próxima: ${next.title}\n" +
-                SimpleDateFormat("EEEE d, HH:mm", es).format(Date(next.begin)) + "–" +
-                SimpleDateFormat("HH:mm", es).format(Date(next.end))
+        if (next != null) {
+            cardTitle.text = next.title
+            val day = SimpleDateFormat("EEEE d", es).format(Date(next.begin)).replaceFirstChar { it.uppercase() }
+            cardSub.text = "$day · ${hm.format(Date(next.begin))} – ${hm.format(Date(next.end))}"
         } else if (!CalendarSource.hasPermission(this)) {
-            "Falta el permiso del calendario."
+            cardTitle.text = "Sin calendario"
+            cardSub.text = "Falta el permiso del calendario."
         } else {
-            "No veo clases en los próximos 8 días. " + CalendarSource.diagnose(this)
+            cardTitle.text = "Sin clases a la vista"
+            cardSub.text = CalendarSource.diagnose(this)
+        }
+    }
+
+    // ---------- Filas ----------
+
+    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
+
+    /** Una fila: texto a la izquierda; a la derecha ✓ o una pastilla con acción. */
+    private fun row(parent: LinearLayout, text: String, ok: Boolean?, action: String? = null,
+                    muted: Boolean = false, onClick: (() -> Unit)? = null) {
+        if (parent.childCount > 0) {
+            parent.addView(View(this).apply {
+                setBackgroundColor(getColor(R.color.divider))
+            }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(1)))
+        }
+        val r = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            minimumHeight = dp(52)
+            setPadding(0, dp(8), 0, dp(8))
+            if (onClick != null) setOnClickListener { onClick() }
+        }
+        r.addView(TextView(this).apply {
+            this.text = text
+            textSize = if (muted) 13f else 15f
+            setTextColor(getColor(if (muted) R.color.muted else R.color.fg))
+        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        if (ok == true) {
+            r.addView(TextView(this).apply {
+                this.text = "✓"; textSize = 16f; setTextColor(getColor(R.color.fg))
+            })
+        } else if (action != null) {
+            r.addView(TextView(this).apply {
+                this.text = action
+                textSize = 13f
+                setTextColor(getColor(R.color.fg))
+                setBackgroundResource(R.drawable.pill)
+                setPadding(dp(14), dp(5), dp(14), dp(5))
+                if (onClick != null) setOnClickListener { onClick() }
+            })
+        }
+        parent.addView(r)
+    }
+
+    private fun refreshDrive() {
+        driveRows.removeAllViews()
+        when {
+            prefs.scriptUrl.isBlank() -> row(driveRows, "Sin conectar", false, "Conectar") { askScriptUrl() }
+            driveState.startsWith("✓") -> row(driveRows, driveState.removePrefix("✓"), true) { askScriptUrl() }
+            driveState.isEmpty() -> row(driveRows, "Comprobando…", null, muted = true)
+            else -> row(driveRows, driveState, false, "Cambiar") { askScriptUrl() }
         }
         val pending = Store.toUpload(this).size
-        if (pending > 0) lines += "$pending grabación(es) pendientes de subir"
-        tvStatus.text = lines.joinToString("\n\n")
+        if (pending > 0) {
+            row(driveRows, if (pending == 1) "1 grabación por subir" else "$pending grabaciones por subir",
+                null, muted = true)
+        }
     }
 
     // ---------- Drive ----------
@@ -140,20 +220,19 @@ class MainActivity : Activity() {
 
     private fun testConnection() {
         val url = prefs.scriptUrl
-        if (url.isBlank()) {
-            tvDrive.text = "Sin conectar. Pega el enlace de tu script."
-            return
-        }
-        tvDrive.text = "Comprobando…"
+        driveState = ""
+        refreshDrive()
+        if (url.isBlank()) return
         Thread {
             val msg = try {
                 val r = Uploader.callScript(url, JSONObject().put("action", "ping"))
-                "✓ Conectado a «${r.optString("folder")}»"
+                "✓" + r.optString("folder").trim()
             } catch (e: Exception) {
-                "✗ No funciona: ${e.message}"
+                "No conecta: ${e.message}"
             }
             runOnUiThread {
-                tvDrive.text = msg
+                driveState = msg
+                refreshDrive()
                 if (msg.startsWith("✓")) UploadJob.schedule(this)
             }
         }.start()
@@ -169,7 +248,7 @@ class MainActivity : Activity() {
             runOnUiThread {
                 pendingUpdate = u
                 if (u != null) {
-                    btnUpdate.text = "⬇  Actualizar a la versión ${u.name}"
+                    btnUpdate.text = "Actualizar a la versión ${u.name}"
                     btnUpdate.visibility = View.VISIBLE
                 } else {
                     btnUpdate.visibility = View.GONE
@@ -201,7 +280,7 @@ class MainActivity : Activity() {
             } catch (e: Exception) {
                 runOnUiThread {
                     btnUpdate.isEnabled = true
-                    btnUpdate.text = "⬇  Actualizar a la versión ${u.name}"
+                    btnUpdate.text = "Actualizar a la versión ${u.name}"
                     Toast.makeText(this, "No se pudo descargar: ${e.message}", Toast.LENGTH_LONG).show()
                 }
             }
@@ -246,10 +325,13 @@ class MainActivity : Activity() {
     }
 
     private fun refreshPermissions() {
+        permRows.removeAllViews()
         val all = perms()
-        tvPerms.text = all.joinToString("\n") { (if (it.ok) "✓  " else "✗  ") + it.label }
-        val missing = all.count { !it.ok }
-        btnPerms.visibility = if (missing == 0) View.GONE else View.VISIBLE
+        if (all.all { it.ok }) {
+            row(permRows, "Todo listo", true)
+        } else {
+            all.forEach { p -> row(permRows, p.label, p.ok, if (p.ok) null else "Activar") { if (!p.ok) p.ask() } }
+        }
     }
 
     private fun requestNextPermission() {

@@ -2,67 +2,101 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/bg"
     android:fitsSystemWindows="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="20dp">
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:paddingTop="28dp"
+        android:paddingBottom="32dp">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/app_name"
-            android:textSize="26sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/tvStatus"
+        <!-- Tarjeta: próxima clase o grabando -->
+        <LinearLayout
+            android:id="@+id/card"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:lineSpacingExtra="4dp"
-            android:textSize="16sp" />
+            android:background="@drawable/card_outline"
+            android:orientation="vertical"
+            android:padding="20dp">
 
-        <Button
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <View
+                    android:id="@+id/cardDot"
+                    android:layout_width="8dp"
+                    android:layout_height="8dp"
+                    android:layout_marginEnd="8dp"
+                    android:background="@drawable/dot"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/cardLabel"
+                    style="@style/Label"
+                    android:text="Próxima clase" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/cardTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:textColor="@color/fg"
+                android:textSize="22sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/cardTimer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:fontFamily="sans-serif-light"
+                android:textColor="@color/on_fg"
+                android:textSize="36sp"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/cardSub"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:textColor="@color/fg"
+                android:textSize="15sp" />
+        </LinearLayout>
+
+        <TextView style="@style/Section" android:text="Google Drive" />
+
+        <LinearLayout
+            android:id="@+id/driveRows"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
+        <TextView style="@style/Section" android:text="Permisos" />
+
+        <LinearLayout
+            android:id="@+id/permRows"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
+        <TextView
             android:id="@+id/btnUpdate"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:backgroundTint="@color/accent"
-            android:textColor="#FFFFFF"
+            android:layout_marginTop="28dp"
+            android:background="@drawable/btn_filled"
+            android:gravity="center"
+            android:padding="15dp"
+            android:textColor="@color/on_fg"
+            android:textSize="15sp"
             android:visibility="gone" />
-
-        <!-- Drive -->
-        <TextView style="@style/Section" android:text="Google Drive" />
-
-        <TextView
-            android:id="@+id/tvDrive"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textSize="15sp" />
-
-        <Button
-            android:id="@+id/btnDrive"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Pegar enlace" />
-
-        <!-- Permisos -->
-        <TextView style="@style/Section" android:text="Permisos" />
-
-        <TextView
-            android:id="@+id/tvPerms"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:lineSpacingExtra="4dp"
-            android:textSize="15sp" />
-
-        <Button
-            android:id="@+id/btnPerms"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Dar el permiso que falta" />
     </LinearLayout>
 </ScrollView>

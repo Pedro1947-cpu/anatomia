@@ -31,6 +31,8 @@ class RecorderService : Service() {
             private set
         @Volatile var startedAt = 0L
             private set
+        @Volatile var currentTitle = ""
+            private set
 
         /** Escucha para que la pantalla se actualice al empezar/parar. */
         var listener: (() -> Unit)? = null
@@ -104,7 +106,6 @@ class RecorderService : Service() {
         false
     }
 
-    private var currentTitle = ""
 
     private fun recordingNotification(endAt: Long): Notification {
         val stopPi = PendingIntent.getService(

@@ -1,6 +1,13 @@
 <resources>
-    <color name="rec">#D32F2F</color>
-    <color name="stop">#424242</color>
-    <color name="accent">#1565C0</color>
-    <color name="icon_bg">#C62828</color>
+    <color name="bg">#FFFFFF</color>
+    <color name="fg">#111111</color>
+    <color name="muted">#888888</color>
+    <color name="divider">#EEEEEE</color>
+    <color name="on_fg">#FFFFFF</color>
+    <color name="on_fg_muted">#AAAAAA</color>
+    <color name="icon_bg">#111111</color>
+    <!-- antiguos, por compatibilidad -->
+    <color name="rec">#111111</color>
+    <color name="stop">#111111</color>
+    <color name="accent">#111111</color>
 </resources>
