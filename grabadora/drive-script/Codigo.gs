@@ -7,7 +7,24 @@
  * de esta aplicación web puede subir archivos a esa carpeta.
  */
 
-// Nombre de la carpeta de Drive donde se guardan las clases (se crea sola).
+// Carpeta "Medicina 1º" con una carpeta por asignatura.
+const CARPETA_ASIGNATURAS_ID = '1YTfzK1DmJ_hE_3troD4kEekfiBU-Jc8x';
+
+// Palabra del título de la clase en el calendario → carpeta de la asignatura.
+// (Da igual mayúsculas y tildes. Añade aquí más asignaturas cuando las tengas.)
+const ASIGNATURAS = {
+  'Bioquímica': 'Bioquímica',
+  'Anatomía': 'Anatomía',
+  'Biología': 'Biología',
+  'Psicología': 'Psicología',
+  'Documentación': 'DocHisTeoMetMed',
+  'Historia': 'DocHisTeoMetMed',
+};
+
+// Dentro de cada asignatura, los audios van a esta subcarpeta ('' = directamente en la asignatura).
+const SUBCARPETA_AUDIOS = 'Grabaciones';
+
+// Si una grabación no encaja con ninguna asignatura (o la grabas a mano), va aquí (se crea sola).
 const NOMBRE_CARPETA = 'Grabaciones de clase';
 
 function doPost(e) {
@@ -16,7 +33,7 @@ function doPost(e) {
     const carpeta = obtenerCarpeta_();
 
     if (peticion.action === 'ping') {
-      return responder_({ ok: true, folder: carpeta.getName() });
+      return responder_({ ok: true, folder: DriveApp.getFolderById(CARPETA_ASIGNATURAS_ID).getName() });
     }
 
     if (peticion.action === 'start') {
@@ -66,12 +83,47 @@ function autorizar() {
   Logger.log('Todo listo. Carpeta: ' + carpeta.getUrl());
 }
 
-/** Subcarpeta por asignatura (si la app la manda); si no, la carpeta principal. */
-function carpetaDestino_(carpeta, nombre) {
-  nombre = String(nombre || '').trim().slice(0, 80);
-  if (!nombre) return carpeta;
-  const encontradas = carpeta.getFoldersByName(nombre);
-  return encontradas.hasNext() ? encontradas.next() : carpeta.createFolder(nombre);
+/** Elige la carpeta según la asignatura (el título de la clase). */
+function carpetaDestino_(carpetaGeneral, titulo) {
+  titulo = String(titulo || '').trim();
+  if (!titulo) return carpetaGeneral;
+  const t = normalizar_(titulo);
+  for (const palabra in ASIGNATURAS) {
+    if (t.indexOf(normalizar_(palabra)) === -1) continue;
+    const asignatura = buscarSubcarpeta_(DriveApp.getFolderById(CARPETA_ASIGNATURAS_ID), ASIGNATURAS[palabra]);
+    if (!asignatura) break;
+    return SUBCARPETA_AUDIOS ? subcarpeta_(asignatura, SUBCARPETA_AUDIOS) : asignatura;
+  }
+  return subcarpeta_(carpetaGeneral, titulo.slice(0, 80));
+}
+
+/** Busca una subcarpeta sin fijarse en mayúsculas, tildes ni espacios sobrantes. */
+function buscarSubcarpeta_(padre, nombre) {
+  const buscado = normalizar_(nombre);
+  const it = padre.getFolders();
+  while (it.hasNext()) {
+    const f = it.next();
+    if (normalizar_(f.getName()) === buscado) return f;
+  }
+  return null;
+}
+
+function subcarpeta_(padre, nombre) {
+  return buscarSubcarpeta_(padre, nombre) || padre.createFolder(nombre);
+}
+
+function normalizar_(s) {
+  return String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+
+/** Prueba desde el editor: muestra a qué carpeta iría cada clase. */
+function probarCarpetas() {
+  const general = obtenerCarpeta_();
+  ['Bioquímica Básica', 'Anatomía Humana I (prácticas)', 'Documentación, Historia, Teoría y Método de la Medicina',
+   'Biología Celular', 'Psicología (prácticas)', ''].forEach(function (t) {
+    const f = carpetaDestino_(general, t);
+    Logger.log((t || '(grabación manual)') + '  →  ' + f.getName() + '  (' + f.getUrl() + ')');
+  });
 }
 
 function obtenerCarpeta_() {
