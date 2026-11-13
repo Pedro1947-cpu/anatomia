@@ -226,7 +226,7 @@ class MainActivity : Activity() {
         val names = CalendarSource.calendars(this).filter { it.first in prefs.calendarIds }.map { it.second }
         btnCalendars.text = if (names.isEmpty()) "Elegir calendario" else "Calendario: " + names.joinToString(", ")
         btnFilter.text = if (prefs.calendarFilter.isEmpty()) "Grabar todos los eventos de ese calendario"
-        else "Solo eventos que contienen «${prefs.calendarFilter}»"
+        else "Solo eventos con «${prefs.calendarFilter}» (título o descripción)"
         tvNext.text = when {
             !prefs.scheduleEnabled -> "El horario automático está apagado."
             cal && !CalendarSource.hasPermission(this) -> "Falta el permiso para leer el calendario."
@@ -272,7 +272,7 @@ class MainActivity : Activity() {
         }
         AlertDialog.Builder(this)
             .setTitle("Filtrar eventos (opcional)")
-            .setMessage("Si en ese calendario también hay cosas que no son clases, escribe una palabra que tengan solo las clases. Déjalo vacío para grabar todos los eventos.")
+            .setMessage("Si en ese calendario también hay cosas que no son clases, escribe una palabra que tengan solo las clases en el título o en la descripción. Déjalo vacío para grabar todos los eventos.")
             .setView(input)
             .setPositiveButton("Guardar") { _, _ ->
                 prefs.calendarFilter = input.text.toString()

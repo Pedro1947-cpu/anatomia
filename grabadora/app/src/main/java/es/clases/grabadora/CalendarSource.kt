@@ -62,6 +62,7 @@ object CalendarSource {
                     CalendarContract.Instances.BEGIN,
                     CalendarContract.Instances.END,
                     CalendarContract.Instances.STATUS,
+                    CalendarContract.Instances.DESCRIPTION,
                 ),
                 sel, null, CalendarContract.Instances.BEGIN + " ASC"
             )?.use { cur ->
@@ -71,7 +72,8 @@ object CalendarSource {
                     val end = cur.getLong(2)
                     val cancelled = !cur.isNull(3) && cur.getInt(3) == CalendarContract.Events.STATUS_CANCELED
                     if (begin <= after || end <= begin || cancelled) continue
-                    if (filter.isNotEmpty() && !title.lowercase().contains(filter)) continue
+                    val desc = cur.getString(4).orEmpty()
+                    if (filter.isNotEmpty() && !(title + " " + desc).lowercase().contains(filter)) continue
                     return ClassEvent(title.ifEmpty { "Clase" }, begin, end)
                 }
                 null
