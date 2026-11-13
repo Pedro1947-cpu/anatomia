@@ -8,13 +8,20 @@ class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(c: Context, intent: Intent) {
         when (intent.action) {
             Scheduler.ACTION_START -> {
-                Scheduler.reschedule(c) // deja programada la del próximo día
-                val minutes = Prefs(c).durationMinutes
+                val p = Prefs(c)
+                val title = p.nextTitle
+                val begin = p.nextBegin
+                val end = p.nextEnd
+                val now = System.currentTimeMillis()
+                // Deja programada la siguiente clase (la que empiece después de esta).
+                Scheduler.reschedule(c, maxOf(now, begin))
+                val minutes = if (end > now) ((end - now + 59_999) / 60_000).toInt()
+                else p.durationMinutes
                 try {
-                    RecorderService.start(c, minutes, scheduled = true)
+                    RecorderService.start(c, minutes, scheduled = true, title = title)
                 } catch (e: Exception) {
                     // Android no nos ha dejado arrancar solos: pedimos un toque al usuario.
-                    Notifs.askToStart(c)
+                    Notifs.askToStart(c, title, minutes)
                 }
             }
             Scheduler.ACTION_STOP -> RecorderService.stop(c)

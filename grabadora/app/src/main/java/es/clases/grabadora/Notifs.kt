@@ -29,20 +29,23 @@ object Notifs {
         )
     }
 
-    fun openApp(c: Context, action: String? = null): PendingIntent = PendingIntent.getActivity(
-        c, if (action == null) 0 else 3,
-        Intent(c, MainActivity::class.java).setAction(action ?: Intent.ACTION_MAIN),
-        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-    )
+    fun openApp(c: Context, action: String? = null, extras: Intent? = null): PendingIntent {
+        val i = Intent(c, MainActivity::class.java).setAction(action ?: Intent.ACTION_MAIN)
+        extras?.extras?.let { i.putExtras(it) }
+        return PendingIntent.getActivity(
+            c, if (action == null) 0 else 3, i,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
 
-    fun alert(c: Context, title: String, text: String, action: String? = null) {
+    fun alert(c: Context, title: String, text: String, action: String? = null, extras: Intent? = null) {
         createChannels(c)
         val n = Notification.Builder(c, CH_ALERT)
             .setSmallIcon(R.drawable.ic_mic)
             .setContentTitle(title)
             .setContentText(text)
             .setStyle(Notification.BigTextStyle().bigText(text))
-            .setContentIntent(openApp(c, action))
+            .setContentIntent(openApp(c, action, extras))
             .setAutoCancel(true)
             .build()
         try {
@@ -51,7 +54,9 @@ object Notifs {
     }
 
     /** Android no dejó empezar la grabación solo: pedimos un toque. */
-    fun askToStart(c: Context) = alert(
-        c, "Es la hora de clase", "Toca aquí para empezar a grabar", MainActivity.ACTION_RECORD_NOW
+    fun askToStart(c: Context, title: String = "", minutes: Int = 0) = alert(
+        c, if (title.isNotEmpty()) "Es la hora de $title" else "Es la hora de clase",
+        "Toca aquí para empezar a grabar", MainActivity.ACTION_RECORD_NOW,
+        Intent().putExtra("title", title).putExtra("minutes", minutes)
     )
 }

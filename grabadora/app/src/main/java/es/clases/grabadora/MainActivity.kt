@@ -58,6 +58,9 @@ class MainActivity : Activity() {
     private val btnStart by lazy { findViewById<Button>(R.id.btnStart) }
     private val btnDuration by lazy { findViewById<Button>(R.id.btnDuration) }
     private val tvNext by lazy { findViewById<TextView>(R.id.tvNext) }
+    private val swCalendar by lazy { findViewById<Switch>(R.id.swCalendar) }
+    private val btnCalendars by lazy { findViewById<Button>(R.id.btnCalendars) }
+    private val btnFilter by lazy { findViewById<Button>(R.id.btnFilter) }
     private val tvDrive by lazy { findViewById<TextView>(R.id.tvDrive) }
     private val tvPerms by lazy { findViewById<TextView>(R.id.tvPerms) }
     private val btnPerms by lazy { findViewById<Button>(R.id.btnPerms) }
@@ -82,6 +85,21 @@ class MainActivity : Activity() {
             }
         }
         buildDayToggles()
+        swCalendar.isChecked = prefs.useCalendar
+        swCalendar.setOnCheckedChangeListener { _, on ->
+            prefs.useCalendar = on
+            if (on && !CalendarSource.hasPermission(this)) {
+                requestPermissions(arrayOf(Manifest.permission.READ_CALENDAR), 2)
+            } else if (on && prefs.calendarIds.isEmpty()) {
+                chooseCalendars()
+            }
+            Scheduler.reschedule(this); refreshSchedule(); refreshPermissions()
+        }
+        btnCalendars.setOnClickListener {
+            if (!CalendarSource.hasPermission(this)) requestPermissions(arrayOf(Manifest.permission.READ_CALENDAR), 2)
+            else chooseCalendars()
+        }
+        btnFilter.setOnClickListener { askFilter() }
         btnStart.setOnClickListener {
             TimePickerDialog(this, { _, h, m ->
                 prefs.startHour = h; prefs.startMinute = m
@@ -120,7 +138,8 @@ class MainActivity : Activity() {
     private fun handleIntent(i: Intent?) {
         if (i?.action == ACTION_RECORD_NOW && !RecorderService.isRecording) {
             i.action = Intent.ACTION_MAIN
-            startRecording(prefs.durationMinutes)
+            val minutes = i.getIntExtra("minutes", 0).takeIf { it > 0 } ?: prefs.durationMinutes
+            startRecording(minutes, i.getStringExtra("title") ?: "")
         }
     }
 
@@ -153,13 +172,13 @@ class MainActivity : Activity() {
         else startRecording(0)
     }
 
-    private fun startRecording(minutes: Int) {
+    private fun startRecording(minutes: Int, title: String = "") {
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             Toast.makeText(this, "Primero dale permiso al micrófono", Toast.LENGTH_LONG).show()
             requestNextPermission()
             return
         }
-        RecorderService.start(this, minutes, scheduled = false)
+        RecorderService.start(this, minutes, scheduled = false, title = title)
         handler.postDelayed({ refreshAll() }, 600)
     }
 
@@ -199,17 +218,68 @@ class MainActivity : Activity() {
     }
 
     private fun refreshSchedule() {
+        val cal = prefs.useCalendar
+        findViewById<View>(R.id.fixedGroup).visibility = if (cal) View.GONE else View.VISIBLE
+        findViewById<View>(R.id.calGroup).visibility = if (cal) View.VISIBLE else View.GONE
         btnStart.text = "Empieza: " + "%02d:%02d".format(prefs.startHour, prefs.startMinute)
         btnDuration.text = "Dura: " + durationText(prefs.durationMinutes)
+        val names = CalendarSource.calendars(this).filter { it.first in prefs.calendarIds }.map { it.second }
+        btnCalendars.text = if (names.isEmpty()) "Elegir calendario" else "Calendario: " + names.joinToString(", ")
+        btnFilter.text = if (prefs.calendarFilter.isEmpty()) "Grabar todos los eventos de ese calendario"
+        else "Solo eventos que contienen «${prefs.calendarFilter}»"
         tvNext.text = when {
             !prefs.scheduleEnabled -> "El horario automático está apagado."
-            prefs.days.isEmpty() -> "Marca al menos un día."
+            cal && !CalendarSource.hasPermission(this) -> "Falta el permiso para leer el calendario."
+            cal && prefs.calendarIds.isEmpty() -> "Elige qué calendario tiene tus clases."
+            !cal && prefs.days.isEmpty() -> "Marca al menos un día."
             else -> {
-                val next = Scheduler.nextStart(this)
-                if (next == null) "No hay ninguna grabación programada."
-                else "Próxima grabación: " + SimpleDateFormat("EEEE d 'de' MMMM, HH:mm", es).format(Date(next))
+                val next = Scheduler.next(this)
+                if (next == null) {
+                    if (cal) "No hay clases en los próximos 8 días de ese calendario."
+                    else "No hay ninguna grabación programada."
+                } else {
+                    val subject = if (next.title.isNotEmpty()) next.title + "\n" else ""
+                    "Próxima grabación: " + subject +
+                        SimpleDateFormat("EEEE d 'de' MMMM, HH:mm", es).format(Date(next.begin)) +
+                        " – " + hhmm(next.end)
+                }
             }
         }
+    }
+
+    private fun chooseCalendars() {
+        val all = CalendarSource.calendars(this)
+        if (all.isEmpty()) {
+            Toast.makeText(this, "No encuentro calendarios en el móvil. ¿Está la app de Google Calendar con tu cuenta?", Toast.LENGTH_LONG).show()
+            return
+        }
+        val checked = all.map { it.first in prefs.calendarIds }.toBooleanArray()
+        AlertDialog.Builder(this)
+            .setTitle("¿Qué calendario tiene tus clases?")
+            .setMultiChoiceItems(all.map { it.second }.toTypedArray(), checked) { _, i, on -> checked[i] = on }
+            .setPositiveButton("Guardar") { _, _ ->
+                prefs.calendarIds = all.filterIndexed { i, _ -> checked[i] }.map { it.first }.toSet()
+                Scheduler.reschedule(this); refreshSchedule()
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+
+    private fun askFilter() {
+        val input = EditText(this).apply {
+            hint = "Por ejemplo: Clase"
+            setText(prefs.calendarFilter)
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Filtrar eventos (opcional)")
+            .setMessage("Si en ese calendario también hay cosas que no son clases, escribe una palabra que tengan solo las clases. Déjalo vacío para grabar todos los eventos.")
+            .setView(input)
+            .setPositiveButton("Guardar") { _, _ ->
+                prefs.calendarFilter = input.text.toString()
+                Scheduler.reschedule(this); refreshSchedule()
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
     }
 
     private fun durationText(m: Int) = when {
@@ -301,6 +371,11 @@ class MainActivity : Activity() {
                 startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:$packageName")))
             }
         }
+        if (prefs.useCalendar) {
+            list += Perm("Leer el calendario", CalendarSource.hasPermission(this)) {
+                requestPermissions(arrayOf(Manifest.permission.READ_CALENDAR), 2)
+            }
+        }
         val pm = getSystemService(PowerManager::class.java)
         list += Perm("Sin restricciones de batería", pm.isIgnoringBatteryOptimizations(packageName)) {
             try {
@@ -340,6 +415,11 @@ class MainActivity : Activity() {
     override fun onRequestPermissionsResult(code: Int, permissions: Array<out String>, results: IntArray) {
         super.onRequestPermissionsResult(code, permissions, results)
         refreshPermissions()
+        if (code == 2) {
+            if (CalendarSource.hasPermission(this) && prefs.calendarIds.isEmpty()) chooseCalendars()
+            Scheduler.reschedule(this); refreshSchedule()
+            return
+        }
         if (runtimeMissing().isNotEmpty() && permissions.any { !shouldShowRequestPermissionRationale(it) && !has(it) }) {
             // Denegado para siempre: hay que ir a Ajustes
             AlertDialog.Builder(this)

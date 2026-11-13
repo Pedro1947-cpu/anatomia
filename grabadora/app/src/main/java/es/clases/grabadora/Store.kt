@@ -14,13 +14,15 @@ data class Recording(
     var error: String = "",
     var uploadUrl: String = "",
     var driveLink: String = "",
+    /** Asignatura (título del evento del calendario); vacío si no se sabe. */
+    val title: String = "",
 ) {
     val file get() = File(path)
 
     fun toJson() = JSONObject()
         .put("path", path).put("name", name).put("createdAt", createdAt)
         .put("status", status).put("error", error)
-        .put("uploadUrl", uploadUrl).put("driveLink", driveLink)
+        .put("uploadUrl", uploadUrl).put("driveLink", driveLink).put("title", title)
 
     companion object {
         const val RECORDING = "grabando"
@@ -32,7 +34,7 @@ data class Recording(
         fun fromJson(o: JSONObject) = Recording(
             o.getString("path"), o.getString("name"), o.getLong("createdAt"),
             o.optString("status", PENDING), o.optString("error"),
-            o.optString("uploadUrl"), o.optString("driveLink"),
+            o.optString("uploadUrl"), o.optString("driveLink"), o.optString("title"),
         )
     }
 }

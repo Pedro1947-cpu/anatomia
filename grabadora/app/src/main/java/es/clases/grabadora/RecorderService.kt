@@ -35,9 +35,10 @@ class RecorderService : Service() {
         /** Escucha para que la pantalla se actualice al empezar/parar. */
         var listener: (() -> Unit)? = null
 
-        fun start(c: Context, minutes: Int, scheduled: Boolean) {
+        fun start(c: Context, minutes: Int, scheduled: Boolean, title: String = "") {
             val i = Intent(c, RecorderService::class.java).setAction(ACT_START)
                 .putExtra("minutes", minutes).putExtra("scheduled", scheduled)
+                .putExtra("title", title)
             c.startForegroundService(i)
         }
 
@@ -69,9 +70,16 @@ class RecorderService : Service() {
         Notifs.createChannels(this)
         when (intent?.action) {
             ACT_START -> {
+                val minutes = intent.getIntExtra("minutes", 0)
+                val scheduled = intent.getBooleanExtra("scheduled", false)
+                val title = intent.getStringExtra("title") ?: ""
                 if (!isRecording) {
-                    val minutes = intent.getIntExtra("minutes", 0)
-                    startRecording(minutes, intent.getBooleanExtra("scheduled", false))
+                    startRecording(minutes, scheduled, title)
+                } else if (scheduled) {
+                    // Empieza otra clase seguida: cerramos la anterior y abrimos la nueva.
+                    goForeground(recordingNotification(Prefs(this).stopAt))
+                    stopRecording(continuing = true)
+                    startRecording(minutes, scheduled, title)
                 } else {
                     goForeground(recordingNotification(Prefs(this).stopAt)) // ya estaba grabando
                 }
@@ -96,6 +104,8 @@ class RecorderService : Service() {
         false
     }
 
+    private var currentTitle = ""
+
     private fun recordingNotification(endAt: Long): Notification {
         val stopPi = PendingIntent.getService(
             this, 10, Intent(this, RecorderService::class.java).setAction(ACT_STOP),
@@ -106,7 +116,7 @@ class RecorderService : Service() {
         else "Pulsa Parar cuando termine la clase"
         return Notification.Builder(this, Notifs.CH_REC)
             .setSmallIcon(R.drawable.ic_mic)
-            .setContentTitle("Grabando la clase")
+            .setContentTitle(if (currentTitle.isNotEmpty()) "Grabando: $currentTitle" else "Grabando la clase")
             .setContentText(until)
             .setUsesChronometer(true)
             .setWhen(if (startedAt > 0) startedAt else System.currentTimeMillis())
@@ -116,20 +126,21 @@ class RecorderService : Service() {
             .build()
     }
 
-    private fun startRecording(requestedMinutes: Int, scheduled: Boolean) {
+    private fun startRecording(requestedMinutes: Int, scheduled: Boolean, title: String) {
+        currentTitle = title
         val minutes = if (requestedMinutes > 0) requestedMinutes else MANUAL_MAX_MINUTES
         val now = System.currentTimeMillis()
         val endAt = now + minutes * 60_000L
         startedAt = now
         if (!goForeground(recordingNotification(if (requestedMinutes > 0) endAt else 0))) {
             startedAt = 0
-            if (scheduled) Notifs.askToStart(this)
+            if (scheduled) Notifs.askToStart(this, title, requestedMinutes)
             stopSelf()
             return
         }
 
         val dir = File(getExternalFilesDir(null), "Grabaciones").apply { mkdirs() }
-        val name = fileName(now)
+        val name = fileName(now, title)
         val file = File(dir, name)
         try {
             recorder = newRecorder().apply {
@@ -157,7 +168,7 @@ class RecorderService : Service() {
 
         currentPath = file.absolutePath
         isRecording = true
-        Store.add(this, Recording(file.absolutePath, name, now, Recording.RECORDING))
+        Store.add(this, Recording(file.absolutePath, name, now, Recording.RECORDING, title = title))
 
         wakeLock = getSystemService(PowerManager::class.java)
             .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "grabadora:rec")
@@ -174,14 +185,15 @@ class RecorderService : Service() {
     private fun newRecorder() =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) MediaRecorder(this) else MediaRecorder()
 
-    private fun fileName(t: Long): String {
+    private fun fileName(t: Long, title: String): String {
         val es = Locale("es", "ES")
         val day = SimpleDateFormat("EEEE", es).format(Date(t))
-        return "Clase " + SimpleDateFormat("yyyy-MM-dd", es).format(Date(t)) +
+        val subject = title.replace(Regex("[\\\\/:*?\"<>|]"), "-").take(60).trim().ifEmpty { "Clase" }
+        return subject + " " + SimpleDateFormat("yyyy-MM-dd", es).format(Date(t)) +
             " (" + day + ") " + SimpleDateFormat("HH'h'mm", es).format(Date(t)) + ".m4a"
     }
 
-    private fun stopRecording() {
+    private fun stopRecording(continuing: Boolean = false) {
         if (!isRecording) return
         handler.removeCallbacks(stopRunnable)
         handler.removeCallbacks(silenceCheck)
@@ -211,15 +223,17 @@ class RecorderService : Service() {
             }
         }
         listener?.invoke()
-        uploadThenFinish()
+        uploadThenFinish(continuing)
     }
 
     /** Sube en el momento (con la notificación aún visible); si falla, se reintenta luego. */
-    private fun uploadThenFinish() {
+    private fun uploadThenFinish(continuing: Boolean = false) {
         if (Store.toUpload(this).isEmpty() || !Uploader.networkOk(this)) {
             UploadJob.schedule(this)
-            stopForeground(STOP_FOREGROUND_REMOVE)
-            stopSelf()
+            if (!continuing) {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf()
+            }
             return
         }
         uploading = true
@@ -232,6 +246,7 @@ class RecorderService : Service() {
                 .setOngoing(true)
                 .setContentIntent(Notifs.openApp(this))
                 .build()
+            if (isRecording) return // la notificación de grabación tiene prioridad
             try { nm.notify(Notifs.ID_REC, n) } catch (_: SecurityException) { }
         }
         show("Preparando…")

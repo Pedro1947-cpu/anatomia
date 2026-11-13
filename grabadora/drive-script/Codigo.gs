@@ -23,7 +23,7 @@ function doPost(e) {
       const metadatos = {
         name: String(peticion.name || 'Clase.m4a'),
         mimeType: String(peticion.mimeType || 'audio/mp4'),
-        parents: [carpeta.getId()],
+        parents: [carpetaDestino_(carpeta, peticion.subfolder).getId()],
       };
       const respuesta = UrlFetchApp.fetch(
         'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true',
@@ -64,6 +64,14 @@ function autorizar() {
     headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
   });
   Logger.log('Todo listo. Carpeta: ' + carpeta.getUrl());
+}
+
+/** Subcarpeta por asignatura (si la app la manda); si no, la carpeta principal. */
+function carpetaDestino_(carpeta, nombre) {
+  nombre = String(nombre || '').trim().slice(0, 80);
+  if (!nombre) return carpeta;
+  const encontradas = carpeta.getFoldersByName(nombre);
+  return encontradas.hasNext() ? encontradas.next() : carpeta.createFolder(nombre);
 }
 
 function obtenerCarpeta_() {

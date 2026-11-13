@@ -22,8 +22,8 @@ object Scheduler {
     fun canExact(c: Context) =
         Build.VERSION.SDK_INT < Build.VERSION_CODES.S || am(c).canScheduleExactAlarms()
 
-    /** Próximo inicio de clase a partir de [from], o null si no hay días marcados. */
-    fun nextStart(c: Context, from: Long = System.currentTimeMillis()): Long? {
+    /** Próximo inicio con el horario fijo a partir de [from], o null si no hay días marcados. */
+    private fun nextFixed(c: Context, from: Long): ClassEvent? {
         val p = Prefs(c)
         if (p.days.isEmpty()) return null
         val cal = Calendar.getInstance().apply {
@@ -34,28 +34,39 @@ object Scheduler {
             set(Calendar.MILLISECOND, 0)
         }
         repeat(8) {
-            if (cal.timeInMillis > from && cal.get(Calendar.DAY_OF_WEEK) in p.days) return cal.timeInMillis
+            if (cal.timeInMillis > from && cal.get(Calendar.DAY_OF_WEEK) in p.days) {
+                val begin = cal.timeInMillis
+                return ClassEvent("", begin, begin + p.durationMinutes * 60_000L)
+            }
             cal.add(Calendar.DAY_OF_YEAR, 1)
         }
         return null
     }
 
+    /** La próxima clase según el modo elegido (horario fijo o calendario). */
+    fun next(c: Context, from: Long = System.currentTimeMillis()): ClassEvent? =
+        if (Prefs(c).useCalendar) CalendarSource.nextEvent(c, from) else nextFixed(c, from)
+
     /** Vuelve a calcular y programar la siguiente grabación automática. */
-    fun reschedule(c: Context) {
+    fun reschedule(c: Context, from: Long = System.currentTimeMillis()) {
         val p = Prefs(c)
         val start = pi(c, ACTION_START, 1)
         am(c).cancel(start)
-        if (!p.scheduleEnabled) return
-        val at = nextStart(c) ?: return
+        CalendarWatchJob.arm(c)
+        val ev = if (p.scheduleEnabled) next(c, from) else null
+        p.nextTitle = ev?.title ?: ""
+        p.nextBegin = ev?.begin ?: 0L
+        p.nextEnd = ev?.end ?: 0L
+        if (ev == null) return
         val show = PendingIntent.getActivity(
             c, 0, Intent(c, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE
         )
         try {
             // setAlarmClock es lo más fiable: el sistema no la retrasa por ahorro de batería
             // y permite a la app arrancar el micrófono aunque esté en segundo plano.
-            am(c).setAlarmClock(AlarmManager.AlarmClockInfo(at, show), start)
+            am(c).setAlarmClock(AlarmManager.AlarmClockInfo(ev.begin, show), start)
         } catch (e: SecurityException) {
-            am(c).setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, start)
+            am(c).setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, ev.begin, start)
         }
     }
 

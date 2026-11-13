@@ -94,6 +94,7 @@ object Uploader {
                 scriptUrl, JSONObject()
                     .put("action", "start").put("name", r.name)
                     .put("mimeType", "audio/mp4").put("size", size)
+                    .put("subfolder", r.title)
             )
             session = res.optString("uploadUrl")
             if (session.isEmpty()) throw IOException("El script de Drive no devolvió dirección de subida")
