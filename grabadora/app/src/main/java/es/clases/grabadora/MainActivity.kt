@@ -242,7 +242,9 @@ class MainActivity : Activity() {
 
     private var pendingUpdate: Updater.Update? = null
 
+    /** Al abrir la app: si hay versión nueva, se descarga e instala sola. */
     private fun checkUpdate() {
+        UpdateJob.schedule(this)
         Thread {
             val u = try { Updater.check(this) } catch (e: Exception) { null }
             runOnUiThread {
@@ -250,6 +252,7 @@ class MainActivity : Activity() {
                 if (u != null) {
                     btnUpdate.text = "Actualizar a la versión ${u.name}"
                     btnUpdate.visibility = View.VISIBLE
+                    if (!RecorderService.isRecording && packageManager.canRequestPackageInstalls()) doUpdate(u)
                 } else {
                     btnUpdate.visibility = View.GONE
                 }

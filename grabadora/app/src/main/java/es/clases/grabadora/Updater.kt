@@ -79,7 +79,15 @@ object Updater {
     }
 
     /** Entrega el APK al instalador de Android (que pedirá confirmación si hace falta). */
-    fun install(c: Context, apk: File) {
+    /** Comprueba, descarga e instala sin tocar nada. Devuelve true si no hay error. */
+    fun autoUpdate(c: Context, interactive: Boolean): Boolean {
+        if (RecorderService.isRecording) return false
+        val u = check(c) ?: return true
+        install(c, download(c, u), interactive)
+        return true
+    }
+
+    fun install(c: Context, apk: File, interactive: Boolean = true) {
         val installer = c.packageManager.packageInstaller
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
         params.setAppPackageName(c.packageName)
@@ -95,7 +103,9 @@ object Updater {
             }
             val flags = PendingIntent.FLAG_UPDATE_CURRENT or
                 (if (Build.VERSION.SDK_INT >= 31) PendingIntent.FLAG_MUTABLE else 0)
-            val pi = PendingIntent.getBroadcast(c, 7, Intent(c, InstallReceiver::class.java), flags)
+            val pi = PendingIntent.getBroadcast(
+                c, 7, Intent(c, InstallReceiver::class.java).putExtra("interactive", interactive), flags
+            )
             session.commit(pi.intentSender)
         }
     }
@@ -108,10 +118,24 @@ class InstallReceiver : BroadcastReceiver() {
                 @Suppress("DEPRECATION")
                 val confirm = intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT) ?: return
                 confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                try {
-                    c.startActivity(confirm)
-                } catch (e: Exception) {
-                    Notifs.alert(c, "Actualización lista", "Abre la app y vuelve a pulsar Actualizar.")
+                val shown = intent.getBooleanExtra("interactive", false) &&
+                    try { c.startActivity(confirm); true } catch (e: Exception) { false }
+                if (!shown) {
+                    // En segundo plano Android no deja abrir la confirmación: aviso para un toque.
+                    Notifs.createChannels(c)
+                    val pi = PendingIntent.getActivity(
+                        c, 8, confirm, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                    )
+                    val n = android.app.Notification.Builder(c, Notifs.CH_UPLOAD)
+                        .setSmallIcon(R.drawable.ic_mic)
+                        .setContentTitle("Nueva versión de la Grabadora")
+                        .setContentText("Toca para instalarla")
+                        .setContentIntent(pi)
+                        .setAutoCancel(true)
+                        .build()
+                    try {
+                        c.getSystemService(android.app.NotificationManager::class.java).notify(4, n)
+                    } catch (_: SecurityException) { }
                 }
             }
             PackageInstaller.STATUS_SUCCESS -> { }
@@ -121,6 +145,32 @@ class InstallReceiver : BroadcastReceiver() {
                     Notifs.alert(c, "No se pudo actualizar", msg)
                 }
             }
+        }
+    }
+}
+
+/** Cada pocas horas, con internet, busca e instala la versión nueva. */
+class UpdateJob : android.app.job.JobService() {
+    override fun onStartJob(params: android.app.job.JobParameters): Boolean {
+        Thread {
+            try { Updater.autoUpdate(this, interactive = false) } catch (_: Exception) { }
+            jobFinished(params, false)
+        }.start()
+        return true
+    }
+
+    override fun onStopJob(params: android.app.job.JobParameters) = false
+
+    companion object {
+        fun schedule(c: Context) {
+            val js = c.getSystemService(android.app.job.JobScheduler::class.java)
+            if (js.getPendingJob(44) != null) return
+            val job = android.app.job.JobInfo.Builder(44, android.content.ComponentName(c, UpdateJob::class.java))
+                .setRequiredNetworkType(android.app.job.JobInfo.NETWORK_TYPE_ANY)
+                .setPeriodic(6 * 3600 * 1000L)
+                .setPersisted(true)
+                .build()
+            js.schedule(job)
         }
     }
 }

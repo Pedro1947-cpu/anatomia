@@ -34,5 +34,6 @@ class BootReceiver : BroadcastReceiver() {
         Scheduler.reschedule(c)
         if (!RecorderService.isRecording) Store.recoverInterrupted(c)
         UploadJob.schedule(c)
+        UpdateJob.schedule(c)
     }
 }
