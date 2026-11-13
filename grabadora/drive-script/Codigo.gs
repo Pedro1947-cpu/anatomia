@@ -21,10 +21,11 @@ const ASIGNATURAS = {
   'Historia': 'DocHisTeoMetMed',
 };
 
-// Dentro de cada asignatura, los audios van a esta subcarpeta ('' = directamente en la asignatura).
-const SUBCARPETA_AUDIOS = 'Grabaciones';
+// Los audios van directamente a la carpeta de la asignatura, junto a los demás temas
+// (pon un nombre aquí, p. ej. 'Grabaciones', si algún día quieres una subcarpeta).
+const SUBCARPETA_AUDIOS = '';
 
-// Si una grabación no encaja con ninguna asignatura (o la grabas a mano), va aquí (se crea sola).
+// Solo para el botón "probar conexión" antiguo; ya no se usa para guardar.
 const NOMBRE_CARPETA = 'Grabaciones de clase';
 
 function doPost(e) {
@@ -85,16 +86,17 @@ function autorizar() {
 
 /** Elige la carpeta según la asignatura (el título de la clase). */
 function carpetaDestino_(carpetaGeneral, titulo) {
-  titulo = String(titulo || '').trim();
-  if (!titulo) return carpetaGeneral;
-  const t = normalizar_(titulo);
+  // Todo va dentro de "Medicina 1º" (la carpeta compartida contigo).
+  const raiz = DriveApp.getFolderById(CARPETA_ASIGNATURAS_ID);
+  const t = normalizar_(titulo || '');
   for (const palabra in ASIGNATURAS) {
-    if (t.indexOf(normalizar_(palabra)) === -1) continue;
-    const asignatura = buscarSubcarpeta_(DriveApp.getFolderById(CARPETA_ASIGNATURAS_ID), ASIGNATURAS[palabra]);
+    if (!t || t.indexOf(normalizar_(palabra)) === -1) continue;
+    const asignatura = buscarSubcarpeta_(raiz, ASIGNATURAS[palabra]);
     if (!asignatura) break;
     return SUBCARPETA_AUDIOS ? subcarpeta_(asignatura, SUBCARPETA_AUDIOS) : asignatura;
   }
-  return subcarpeta_(carpetaGeneral, titulo.slice(0, 80));
+  // Sin asignatura reconocida (o grabación a mano): en la propia "Medicina 1º".
+  return raiz;
 }
 
 /** Busca una subcarpeta sin fijarse en mayúsculas, tildes ni espacios sobrantes. */
