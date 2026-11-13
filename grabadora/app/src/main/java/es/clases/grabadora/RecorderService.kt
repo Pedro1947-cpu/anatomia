@@ -116,7 +116,7 @@ class RecorderService : Service() {
             "Se parará sola a las " + SimpleDateFormat("HH:mm", Locale("es")).format(Date(endAt))
         else "Pulsa Parar cuando termine la clase"
         return Notification.Builder(this, Notifs.CH_REC)
-            .setSmallIcon(R.drawable.ic_mic)
+            .setSmallIcon(R.drawable.ic_mic).setColor(0xFF111111.toInt())
             .setContentTitle(if (currentTitle.isNotEmpty()) "Grabando: $currentTitle" else "Grabando la clase")
             .setContentText(until)
             .setUsesChronometer(true)
@@ -241,7 +241,7 @@ class RecorderService : Service() {
         val nm = getSystemService(NotificationManager::class.java)
         fun show(text: String) {
             val n = Notification.Builder(this, Notifs.CH_UPLOAD)
-                .setSmallIcon(R.drawable.ic_upload)
+                .setSmallIcon(R.drawable.ic_upload).setColor(0xFF111111.toInt())
                 .setContentTitle("Subiendo a Google Drive")
                 .setContentText(text)
                 .setOngoing(true)

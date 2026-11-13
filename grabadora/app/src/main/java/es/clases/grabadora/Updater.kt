@@ -127,7 +127,7 @@ class InstallReceiver : BroadcastReceiver() {
                         c, 8, confirm, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                     )
                     val n = android.app.Notification.Builder(c, Notifs.CH_UPLOAD)
-                        .setSmallIcon(R.drawable.ic_mic)
+                        .setSmallIcon(R.drawable.ic_mic).setColor(0xFF111111.toInt())
                         .setContentTitle("Nueva versión de la Grabadora")
                         .setContentText("Toca para instalarla")
                         .setContentIntent(pi)

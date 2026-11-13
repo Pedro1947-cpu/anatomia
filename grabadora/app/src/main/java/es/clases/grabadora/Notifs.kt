@@ -41,7 +41,7 @@ object Notifs {
     fun alert(c: Context, title: String, text: String, action: String? = null, extras: Intent? = null) {
         createChannels(c)
         val n = Notification.Builder(c, CH_ALERT)
-            .setSmallIcon(R.drawable.ic_mic)
+            .setSmallIcon(R.drawable.ic_mic).setColor(0xFF111111.toInt())
             .setContentTitle(title)
             .setContentText(text)
             .setStyle(Notification.BigTextStyle().bigText(text))
