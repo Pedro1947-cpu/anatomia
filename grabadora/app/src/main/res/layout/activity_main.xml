@@ -17,6 +17,15 @@
             android:textSize="26sp"
             android:textStyle="bold" />
 
+        <Button
+            android:id="@+id/btnUpdate"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:backgroundTint="@color/accent"
+            android:textColor="#FFFFFF"
+            android:visibility="gone" />
+
         <!-- Grabar ahora -->
         <TextView
             android:id="@+id/tvStatus"
@@ -182,5 +191,13 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical" />
+
+        <TextView style="@style/Section" android:text="App" />
+
+        <Button
+            android:id="@+id/btnCheckUpdate"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Buscar actualización" />
     </LinearLayout>
 </ScrollView>

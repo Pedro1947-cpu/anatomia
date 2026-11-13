@@ -177,3 +177,18 @@ class AppTest {
         while (!cond() && System.currentTimeMillis() < end) Thread.sleep(200)
     }
 }
+
+@RunWith(AndroidJUnit4::class)
+class UpdaterTest {
+    @Test
+    fun encuentraLaUltimaVersionEnGitHub() {
+        val c = InstrumentationRegistry.getInstrumentation().targetContext
+        // La versión de pruebas es la 1, así que siempre debe haber una más nueva publicada.
+        val u = Updater.check(c)
+        assertNotNull(u)
+        assertTrue(u!!.url, u.url.endsWith(".apk"))
+        assertTrue(u.code > Updater.currentCode(c))
+        val apk = Updater.download(c, u)
+        assertTrue("APK muy pequeño: ${apk.length()}", apk.length() > 100_000)
+    }
+}

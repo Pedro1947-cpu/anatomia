@@ -126,6 +126,12 @@ class MainActivity : Activity() {
         }
         btnPerms.setOnClickListener { requestNextPermission() }
         findViewById<Button>(R.id.btnRetry).setOnClickListener { uploadNow() }
+        findViewById<Button>(R.id.btnCheckUpdate).apply {
+            text = "Buscar actualización (tienes la ${Updater.currentName(this@MainActivity)})"
+            setOnClickListener { checkUpdate(silent = false) }
+        }
+        findViewById<Button>(R.id.btnUpdate).setOnClickListener { pendingUpdate?.let { doUpdate(it) } }
+        checkUpdate(silent = true)
 
         handleIntent(intent)
     }
@@ -349,6 +355,59 @@ class MainActivity : Activity() {
             Uploader.uploadAll(this) { runOnUiThread { refreshList() } }
             runOnUiThread { refreshList() }
             UploadJob.schedule(this)
+        }.start()
+    }
+
+    // ---------- Actualizaciones ----------
+
+    private var pendingUpdate: Updater.Update? = null
+
+    private fun checkUpdate(silent: Boolean) {
+        if (!silent) Toast.makeText(this, "Buscando…", Toast.LENGTH_SHORT).show()
+        Thread {
+            val u = try { Updater.check(this) } catch (e: Exception) { null }
+            runOnUiThread {
+                pendingUpdate = u
+                val btn = findViewById<Button>(R.id.btnUpdate)
+                if (u != null) {
+                    btn.text = "⬇  Actualizar a la versión ${u.name}"
+                    btn.visibility = View.VISIBLE
+                } else {
+                    btn.visibility = View.GONE
+                    if (!silent) Toast.makeText(this, "Ya tienes la última versión", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }.start()
+    }
+
+    private fun doUpdate(u: Updater.Update) {
+        if (RecorderService.isRecording) {
+            Toast.makeText(this, "Espera a que termine la grabación para actualizar", Toast.LENGTH_LONG).show()
+            return
+        }
+        if (Build.VERSION.SDK_INT >= 26 && !packageManager.canRequestPackageInstalls()) {
+            AlertDialog.Builder(this)
+                .setMessage("Para actualizarse sola, Android necesita que permitas a la Grabadora instalar apps. Activa el interruptor y vuelve atrás.")
+                .setPositiveButton("Abrir ajustes") { _, _ ->
+                    startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
+                }
+                .setNegativeButton("Ahora no", null).show()
+            return
+        }
+        val btn = findViewById<Button>(R.id.btnUpdate)
+        btn.isEnabled = false
+        Thread {
+            try {
+                val apk = Updater.download(this, u) { p -> runOnUiThread { btn.text = "Descargando… $p%" } }
+                runOnUiThread { btn.text = "Instalando…" }
+                Updater.install(this, apk)
+            } catch (e: Exception) {
+                runOnUiThread {
+                    btn.isEnabled = true
+                    btn.text = "⬇  Actualizar a la versión ${u.name}"
+                    Toast.makeText(this, "No se pudo descargar: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
         }.start()
     }
 
