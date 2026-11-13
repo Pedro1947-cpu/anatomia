@@ -41,14 +41,16 @@ object Store {
     private val lock = Any()
     private fun file(c: Context) = File(c.filesDir, "grabaciones.json")
 
-    fun all(c: Context): List<Recording> = synchronized(lock) {
-        val f = file(c)
-        if (!f.exists()) return emptyList()
-        return try {
-            val a = JSONArray(f.readText())
-            (0 until a.length()).map { Recording.fromJson(a.getJSONObject(it)) }
-        } catch (e: Exception) {
-            emptyList()
+    fun all(c: Context): List<Recording> {
+        synchronized(lock) {
+            val f = file(c)
+            if (!f.exists()) return emptyList()
+            return try {
+                val a = JSONArray(f.readText())
+                (0 until a.length()).map { Recording.fromJson(a.getJSONObject(it)) }
+            } catch (e: Exception) {
+                emptyList()
+            }
         }
     }
 

@@ -2,7 +2,6 @@ package es.clases.grabadora
 
 import android.Manifest
 import android.app.Activity
-import android.app.AlarmManager
 import android.app.AlertDialog
 import android.app.TimePickerDialog
 import android.content.Intent
