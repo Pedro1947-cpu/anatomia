@@ -84,6 +84,53 @@ object CalendarSource {
     }
 }
 
+/** Explica qué hay en los calendarios elegidos cuando no sale ninguna clase. */
+fun CalendarSource.diagnose(c: Context): String {
+    val p = Prefs(c)
+    val now = System.currentTimeMillis()
+    val uri = CalendarContract.Instances.CONTENT_URI.buildUpon().also {
+        ContentUris.appendId(it, now)
+        ContentUris.appendId(it, now + 8L * 24 * 3600 * 1000)
+    }.build()
+    var total = 0
+    var allDay = 0
+    var matches = 0
+    val samples = mutableListOf<String>()
+    try {
+        c.contentResolver.query(
+            uri,
+            arrayOf(
+                CalendarContract.Instances.TITLE,
+                CalendarContract.Instances.DESCRIPTION,
+                CalendarContract.Instances.ALL_DAY,
+                CalendarContract.Instances.CALENDAR_ID,
+            ),
+            null, null, CalendarContract.Instances.BEGIN + " ASC"
+        )?.use { cur ->
+            while (cur.moveToNext()) {
+                if (cur.getLong(3) !in p.calendarIds) continue
+                total++
+                if (cur.getInt(2) == 1) { allDay++; continue }
+                val t = cur.getString(0).orEmpty()
+                val d = cur.getString(1).orEmpty()
+                val f = p.calendarFilter.lowercase()
+                if (f.isEmpty() || (t + " " + d).lowercase().contains(f)) matches++
+                if (samples.size < 3) samples += t
+            }
+        }
+    } catch (e: Exception) {
+        return "No pude leer el calendario: ${e.message}"
+    }
+    return when {
+        total == 0 -> "Ese calendario no tiene ningún evento en los próximos 8 días en este móvil. " +
+            "Comprueba que es el de tu cuenta de Gmail y abre Google Calendar para que se sincronice."
+        matches == 0 && p.calendarFilter.isNotEmpty() ->
+            "Hay $total eventos en los próximos 8 días, pero ninguno contiene «${p.calendarFilter}». " +
+                "Ejemplos: ${samples.joinToString(" · ")}"
+        else -> "Hay $total eventos ($allDay de día entero, que no se graban). Ejemplos: ${samples.joinToString(" · ")}"
+    }
+}
+
 /** Se despierta cuando cambia el calendario y vuelve a programar la próxima clase. */
 class CalendarWatchJob : JobService() {
     override fun onStartJob(params: JobParameters): Boolean {

@@ -235,7 +235,7 @@ class MainActivity : Activity() {
             else -> {
                 val next = Scheduler.next(this)
                 if (next == null) {
-                    if (cal) "No hay clases en los próximos 8 días de ese calendario."
+                    if (cal) "No encuentro clases. " + CalendarSource.diagnose(this)
                     else "No hay ninguna grabación programada."
                 } else {
                     val subject = if (next.title.isNotEmpty()) next.title + "\n" else ""
