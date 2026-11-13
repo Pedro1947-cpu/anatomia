@@ -46,13 +46,13 @@ object CalendarSource {
     fun nextEvent(c: Context, after: Long): ClassEvent? {
         val p = Prefs(c)
         val ids = p.calendarIds
-        if (!hasPermission(c) || ids.isEmpty()) return null
+        if (!hasPermission(c)) return null
         val uri = CalendarContract.Instances.CONTENT_URI.buildUpon().also {
             ContentUris.appendId(it, after)
             ContentUris.appendId(it, after + 8L * 24 * 3600 * 1000)
         }.build()
-        val sel = "${CalendarContract.Instances.ALL_DAY} = 0 AND " +
-            "${CalendarContract.Instances.CALENDAR_ID} IN (${ids.joinToString(",")})"
+        val sel = "${CalendarContract.Instances.ALL_DAY} = 0 AND ${CalendarContract.Instances.VISIBLE} = 1" +
+            (if (ids.isEmpty()) "" else " AND ${CalendarContract.Instances.CALENDAR_ID} IN (${ids.joinToString(",")})")
         val filter = p.calendarFilter.lowercase()
         return try {
             c.contentResolver.query(
@@ -108,7 +108,7 @@ fun CalendarSource.diagnose(c: Context): String {
             null, null, CalendarContract.Instances.BEGIN + " ASC"
         )?.use { cur ->
             while (cur.moveToNext()) {
-                if (cur.getLong(3) !in p.calendarIds) continue
+                if (p.calendarIds.isNotEmpty() && cur.getLong(3) !in p.calendarIds) continue
                 total++
                 if (cur.getInt(2) == 1) { allDay++; continue }
                 val t = cur.getString(0).orEmpty()
@@ -122,8 +122,8 @@ fun CalendarSource.diagnose(c: Context): String {
         return "No pude leer el calendario: ${e.message}"
     }
     return when {
-        total == 0 -> "Ese calendario no tiene ningún evento en los próximos 8 días en este móvil. " +
-            "Comprueba que es el de tu cuenta de Gmail y abre Google Calendar para que se sincronice."
+        total == 0 -> "El móvil no tiene ningún evento en los próximos 8 días. " +
+            "Abre Google Calendar para que se sincronice."
         matches == 0 && p.calendarFilter.isNotEmpty() ->
             "Hay $total eventos en los próximos 8 días, pero ninguno contiene «${p.calendarFilter}». " +
                 "Ejemplos: ${samples.joinToString(" · ")}"

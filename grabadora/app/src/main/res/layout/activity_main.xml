@@ -17,106 +17,22 @@
             android:textSize="26sp"
             android:textStyle="bold" />
 
-        <Button
-            android:id="@+id/btnUpdate"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:backgroundTint="@color/accent"
-            android:textColor="#FFFFFF"
-            android:visibility="gone" />
-
-        <!-- Grabar ahora -->
         <TextView
             android:id="@+id/tvStatus"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:gravity="center"
-            android:textSize="18sp" />
+            android:layout_marginTop="12dp"
+            android:lineSpacingExtra="4dp"
+            android:textSize="16sp" />
 
         <Button
-            android:id="@+id/btnRecord"
+            android:id="@+id/btnUpdate"
             android:layout_width="match_parent"
-            android:layout_height="80dp"
-            android:layout_marginTop="8dp"
-            android:backgroundTint="@color/rec"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:backgroundTint="@color/accent"
             android:textColor="#FFFFFF"
-            android:textSize="22sp" />
-
-        <!-- Horario -->
-        <TextView style="@style/Section" android:text="Horario automático" />
-
-        <Switch
-            android:id="@+id/swSchedule"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:minHeight="48dp"
-            android:text="Grabar las clases automáticamente"
-            android:textSize="16sp" />
-
-        <Switch
-            android:id="@+id/swCalendar"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:minHeight="48dp"
-            android:text="Saber las clases por mi Google Calendar"
-            android:textSize="16sp" />
-
-        <LinearLayout
-            android:id="@+id/fixedGroup"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical">
-
-            <LinearLayout
-                android:id="@+id/daysRow"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
-
-                <Button
-                    android:id="@+id/btnStart"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1" />
-
-                <Button
-                    android:id="@+id/btnDuration"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1" />
-            </LinearLayout>
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/calGroup"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical">
-
-            <Button
-                android:id="@+id/btnCalendars"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
-
-            <Button
-                android:id="@+id/btnFilter"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
-        </LinearLayout>
-
-        <TextView
-            android:id="@+id/tvNext"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:textSize="15sp" />
+            android:visibility="gone" />
 
         <!-- Drive -->
         <TextView style="@style/Section" android:text="Google Drive" />
@@ -127,39 +43,11 @@
             android:layout_height="wrap_content"
             android:textSize="15sp" />
 
-        <LinearLayout
+        <Button
+            android:id="@+id/btnDrive"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal">
-
-            <Button
-                android:id="@+id/btnDrive"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Pegar enlace" />
-
-            <Button
-                android:id="@+id/btnTest"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Probar conexión" />
-        </LinearLayout>
-
-        <CheckBox
-            android:id="@+id/cbWifi"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:minHeight="48dp"
-            android:text="Subir solo con WiFi" />
-
-        <CheckBox
-            android:id="@+id/cbDelete"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:minHeight="48dp"
-            android:text="Borrar del móvil cuando ya esté en Drive" />
+            android:text="Pegar enlace" />
 
         <!-- Permisos -->
         <TextView style="@style/Section" android:text="Permisos" />
@@ -176,28 +64,5 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Dar el permiso que falta" />
-
-        <!-- Lista -->
-        <TextView style="@style/Section" android:text="Grabaciones" />
-
-        <Button
-            android:id="@+id/btnRetry"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Subir las pendientes ahora" />
-
-        <LinearLayout
-            android:id="@+id/listRecs"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical" />
-
-        <TextView style="@style/Section" android:text="App" />
-
-        <Button
-            android:id="@+id/btnCheckUpdate"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Buscar actualización" />
     </LinearLayout>
 </ScrollView>
