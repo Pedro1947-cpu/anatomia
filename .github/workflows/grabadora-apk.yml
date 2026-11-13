@@ -1,0 +1,52 @@
+name: Grabadora APK
+
+on:
+  push:
+    paths:
+      - "grabadora/**"
+      - ".github/workflows/grabadora-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: grabadora
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.10.2"
+
+      - name: Compilar APK
+        env:
+          VERSION_CODE: ${{ github.run_number }}
+          VERSION_NAME: "1.${{ github.run_number }}"
+        run: |
+          gradle --no-daemon assembleRelease
+          cp app/build/outputs/apk/release/app-release.apk Grabadora.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Grabadora-apk
+          path: grabadora/Grabadora.apk
+
+      - name: Publicar en Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "grabadora-v1.${{ github.run_number }}" Grabadora.apk \
+            --target "${{ github.sha }}" \
+            --title "Grabadora de clases 1.${{ github.run_number }}" \
+            --notes "Descarga Grabadora.apk en el móvil e instálala." \
+            --latest
