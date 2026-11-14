@@ -55,6 +55,7 @@ class MainActivity : Activity() {
     private val driveRows by lazy { findViewById<LinearLayout>(R.id.driveRows) }
     private val permRows by lazy { findViewById<LinearLayout>(R.id.permRows) }
     private val btnUpdate by lazy { findViewById<TextView>(R.id.btnUpdate) }
+    private val btnRecord by lazy { findViewById<TextView>(R.id.btnRecord) }
     private var driveState = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -65,6 +66,7 @@ class MainActivity : Activity() {
         if (!RecorderService.isRecording) Store.recoverInterrupted(this)
 
         btnUpdate.setOnClickListener { pendingUpdate?.let { doUpdate(it) } }
+        btnRecord.setOnClickListener { toggleManual() }
 
         handleIntent(intent)
         checkUpdate()
@@ -105,7 +107,19 @@ class MainActivity : Activity() {
 
     // ---------- Estado ----------
 
+    /** Grabación a mano (ensayos, presentaciones…): va a la carpeta "Ensayo" de Drive. */
+    private fun toggleManual() {
+        if (RecorderService.isRecording) {
+            RecorderService.stop(this)
+        } else {
+            if (!has(Manifest.permission.RECORD_AUDIO)) { requestPermissions(runtimeMissing(), 1); return }
+            RecorderService.start(this, 0, scheduled = false, title = "Ensayo")
+        }
+        handler.postDelayed({ refreshStatus(); refreshDrive() }, 700)
+    }
+
     private fun refreshStatus() {
+        btnRecord.text = if (RecorderService.isRecording) "■   Parar" else "●   Grabar ahora"
         val hm = SimpleDateFormat("HH:mm", es)
         if (RecorderService.isRecording) {
             card.setBackgroundResource(R.drawable.card_filled)
