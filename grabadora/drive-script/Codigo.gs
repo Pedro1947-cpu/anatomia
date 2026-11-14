@@ -23,7 +23,10 @@ const ASIGNATURAS = {
 
 // Los audios van directamente a la carpeta de la asignatura, junto a los demás temas
 // (pon un nombre aquí, p. ej. 'Grabaciones', si algún día quieres una subcarpeta).
-const SUBCARPETA_AUDIOS = '';
+const SUBCARPETA_AUDIOS = 'Grabaciones';
+
+// Grabaciones hechas a mano con el botón (título "Ensayo") → Medicina 1º/Ensayos.
+const CARPETA_ENSAYOS = 'Ensayos';
 
 // Solo para el botón "probar conexión" antiguo; ya no se usa para guardar.
 const NOMBRE_CARPETA = 'Grabaciones de clase';
@@ -89,6 +92,7 @@ function carpetaDestino_(carpetaGeneral, titulo) {
   // Todo va dentro de "Medicina 1º" (la carpeta compartida contigo).
   const raiz = DriveApp.getFolderById(CARPETA_ASIGNATURAS_ID);
   const t = normalizar_(titulo || '');
+  if (t.indexOf('ensayo') !== -1) return subcarpeta_(raiz, CARPETA_ENSAYOS);
   for (const palabra in ASIGNATURAS) {
     if (!t || t.indexOf(normalizar_(palabra)) === -1) continue;
     const asignatura = buscarSubcarpeta_(raiz, ASIGNATURAS[palabra]);
