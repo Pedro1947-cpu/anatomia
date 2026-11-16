@@ -13,6 +13,7 @@ object Notifs {
     const val CH_UPLOAD = "subidas"
     const val ID_REC = 1
     const val ID_ALERT = 2
+    const val ID_START = 3
 
     fun createChannels(c: Context) {
         val nm = c.getSystemService(NotificationManager::class.java)
@@ -38,18 +39,38 @@ object Notifs {
         )
     }
 
-    fun alert(c: Context, title: String, text: String, action: String? = null, extras: Intent? = null) {
+    fun alert(c: Context, title: String, text: String, action: String? = null, extras: Intent? = null,
+              tap: PendingIntent? = null) {
         createChannels(c)
         val n = Notification.Builder(c, CH_ALERT)
             .setSmallIcon(R.drawable.ic_mic).setColor(0xFF111111.toInt())
             .setContentTitle(title)
             .setContentText(text)
             .setStyle(Notification.BigTextStyle().bigText(text))
-            .setContentIntent(openApp(c, action, extras))
+            .setContentIntent(tap ?: openApp(c, action, extras))
             .setAutoCancel(true)
             .build()
         try {
             c.getSystemService(NotificationManager::class.java).notify(ID_ALERT, n)
+        } catch (_: SecurityException) { }
+    }
+
+    /** Aviso "a pantalla completa": con el móvil bloqueado abre la pantalla de inicio sola. */
+    fun startFullScreen(c: Context, title: String, minutes: Int) {
+        createChannels(c)
+        val pi = StartActivity.pending(c, title, minutes, restart = false)
+        val n = Notification.Builder(c, CH_ALERT)
+            .setSmallIcon(R.drawable.ic_mic).setColor(0xFF111111.toInt())
+            .setContentTitle(if (title.isNotEmpty()) "Empieza $title" else "Empieza la clase")
+            .setContentText("Preparando la grabación…")
+            .setCategory(Notification.CATEGORY_ALARM)
+            .setFullScreenIntent(pi, true)
+            .setContentIntent(pi)
+            .setAutoCancel(true)
+            .setTimeoutAfter(60_000L)
+            .build()
+        try {
+            c.getSystemService(NotificationManager::class.java).notify(ID_START, n)
         } catch (_: SecurityException) { }
     }
 

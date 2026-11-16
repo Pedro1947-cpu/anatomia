@@ -37,10 +37,10 @@ class RecorderService : Service() {
         /** Escucha para que la pantalla se actualice al empezar/parar. */
         var listener: (() -> Unit)? = null
 
-        fun start(c: Context, minutes: Int, scheduled: Boolean, title: String = "") {
+        fun start(c: Context, minutes: Int, scheduled: Boolean, title: String = "", restart: Boolean = false) {
             val i = Intent(c, RecorderService::class.java).setAction(ACT_START)
                 .putExtra("minutes", minutes).putExtra("scheduled", scheduled)
-                .putExtra("title", title)
+                .putExtra("title", title).putExtra("restart", restart)
             c.startForegroundService(i)
         }
 
@@ -56,12 +56,29 @@ class RecorderService : Service() {
     private var wakeLock: PowerManager.WakeLock? = null
     private val handler = Handler(Looper.getMainLooper())
     private val stopRunnable = Runnable { stopRecording() }
-    /** Si Android nos da el micrófono "mudo", la amplitud se queda en 0: avisamos. */
-    private val silenceCheck = Runnable {
-        val amp = try { recorder?.maxAmplitude ?: -1 } catch (_: Exception) { -1 }
-        if (isRecording && amp == 0) {
-            Notifs.alert(this, "La grabación parece estar en silencio",
-                "Puede que el móvil haya bloqueado el micrófono. Toca para abrir la app y comprobarlo.")
+    /** Cuántas veces hemos rearrancado esta clase por micrófono mudo (para no entrar en bucle). */
+    private var restarts = 0
+    /**
+     * Si Android nos da el micrófono "mudo", la amplitud se queda exactamente en 0
+     * (con un micrófono de verdad nunca es 0 durante un minuto entero).
+     * Entonces rearrancamos la grabación desde la pantalla invisible, que sí recibe audio.
+     */
+    private val silenceCheck: Runnable = object : Runnable {
+        override fun run() {
+            if (!isRecording) return
+            val amp = try { recorder?.maxAmplitude ?: -1 } catch (_: Exception) { -1 }
+            if (amp == 0) {
+                val left = Prefs(this@RecorderService).stopAt - System.currentTimeMillis()
+                val minutes = if (left > 0) ((left + 59_999) / 60_000).toInt() else 0
+                if (restarts < 3 && StartActivity.launch(this@RecorderService, currentTitle, minutes, restart = true)) {
+                    restarts++
+                } else {
+                    Notifs.alert(this@RecorderService, "El micrófono está mudo",
+                        "Android ha bloqueado el micrófono. Toca aquí para volver a grabar bien.",
+                        tap = StartActivity.pending(this@RecorderService, currentTitle, minutes, restart = true))
+                }
+            }
+            handler.postDelayed(this, 60_000L)
         }
     }
     private var uploading = false
@@ -75,7 +92,14 @@ class RecorderService : Service() {
                 val minutes = intent.getIntExtra("minutes", 0)
                 val scheduled = intent.getBooleanExtra("scheduled", false)
                 val title = intent.getStringExtra("title") ?: ""
-                if (!isRecording) {
+                val restart = intent.getBooleanExtra("restart", false)
+                if (isRecording && restart) {
+                    // El micrófono estaba mudo: tiramos ese trozo y volvemos a empezar.
+                    goForeground(recordingNotification(Prefs(this).stopAt))
+                    stopRecording(continuing = true, discard = true)
+                    startRecording(minutes, scheduled, title)
+                } else if (!isRecording) {
+                    restarts = 0
                     startRecording(minutes, scheduled, title)
                 } else if (scheduled) {
                     // Empieza otra clase seguida: cerramos la anterior y abrimos la nueva.
@@ -194,7 +218,7 @@ class RecorderService : Service() {
             " (" + day + ") " + SimpleDateFormat("HH'h'mm", es).format(Date(t)) + ".m4a"
     }
 
-    private fun stopRecording(continuing: Boolean = false) {
+    private fun stopRecording(continuing: Boolean = false, discard: Boolean = false) {
         if (!isRecording) return
         handler.removeCallbacks(stopRunnable)
         handler.removeCallbacks(silenceCheck)
@@ -216,7 +240,7 @@ class RecorderService : Service() {
         wakeLock = null
 
         if (path != null) {
-            if (ok && File(path).length() > 0) {
+            if (ok && !discard && File(path).length() > 0) {
                 Store.update(this, path) { it.status = Recording.PENDING }
             } else {
                 File(path).delete()

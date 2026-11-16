@@ -11,6 +11,7 @@ import java.util.Calendar
 object Scheduler {
     const val ACTION_START = "es.clases.grabadora.START"
     const val ACTION_STOP = "es.clases.grabadora.STOP"
+    const val ACTION_FALLBACK = "es.clases.grabadora.FALLBACK"
 
     private fun am(c: Context) = c.getSystemService(AlarmManager::class.java)
 
@@ -67,6 +68,19 @@ object Scheduler {
             am(c).setAlarmClock(AlarmManager.AlarmClockInfo(ev.begin, show), start)
         } catch (e: SecurityException) {
             am(c).setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, ev.begin, start)
+        }
+    }
+
+    /** Plan B: si a los 20 s no se ha empezado a grabar, se arranca directamente. */
+    fun scheduleFallback(c: Context, title: String, minutes: Int) {
+        val i = Intent(c, AlarmReceiver::class.java).setAction(ACTION_FALLBACK)
+            .putExtra("title", title).putExtra("minutes", minutes)
+        val fb = PendingIntent.getBroadcast(c, 3, i, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val at = System.currentTimeMillis() + 20_000L
+        try {
+            am(c).setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, fb)
+        } catch (e: SecurityException) {
+            am(c).setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, fb)
         }
     }
 

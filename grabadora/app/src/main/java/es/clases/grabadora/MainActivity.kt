@@ -320,6 +320,15 @@ class MainActivity : Activity() {
                 startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:$packageName")))
             }
         }
+        list += Perm("Mostrar sobre otras apps", Settings.canDrawOverlays(this)) {
+            startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
+        }
+        if (Build.VERSION.SDK_INT >= 34) {
+            val nm = getSystemService(android.app.NotificationManager::class.java)
+            list += Perm("Avisos a pantalla completa", nm.canUseFullScreenIntent()) {
+                startActivity(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.parse("package:$packageName")))
+            }
+        }
         val pm = getSystemService(PowerManager::class.java)
         list += Perm("Batería sin restricciones", pm.isIgnoringBatteryOptimizations(packageName)) {
             try {

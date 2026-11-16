@@ -17,6 +17,16 @@ class AlarmReceiver : BroadcastReceiver() {
                 Scheduler.reschedule(c, maxOf(now, begin))
                 val minutes = if (end > now) ((end - now + 59_999) / 60_000).toInt()
                 else p.durationMinutes
+                // 1) Arrancamos desde una pantalla invisible para que el micrófono no salga mudo.
+                Notifs.startFullScreen(c, title, minutes)
+                StartActivity.launch(c, title, minutes, restart = false)
+                // 2) Por si Android no deja abrir la pantalla: en 20 s arrancamos igualmente.
+                Scheduler.scheduleFallback(c, title, minutes)
+            }
+            Scheduler.ACTION_FALLBACK -> {
+                if (RecorderService.isRecording) return
+                val title = intent.getStringExtra("title") ?: ""
+                val minutes = intent.getIntExtra("minutes", 60)
                 try {
                     RecorderService.start(c, minutes, scheduled = true, title = title)
                 } catch (e: Exception) {
