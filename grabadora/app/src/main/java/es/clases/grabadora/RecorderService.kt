@@ -33,6 +33,8 @@ class RecorderService : Service() {
             private set
         @Volatile var currentTitle = ""
             private set
+        /** Intentos fallidos seguidos de abrir el micrófono (para no entrar en bucle). */
+        @Volatile private var failedStarts = 0
 
         /** Escucha para que la pantalla se actualice al empezar/parar. */
         var listener: (() -> Unit)? = null
@@ -185,11 +187,22 @@ class RecorderService : Service() {
             recorder = null
             file.delete()
             startedAt = 0
-            Notifs.alert(this, "No se pudo grabar", "El micrófono está ocupado o falta el permiso. Abre la app para revisarlo.")
+            failedStarts++
             stopForeground(STOP_FOREGROUND_REMOVE)
-            stopSelf()
+            // Casi siempre es que Android no da el micrófono a una app en segundo plano.
+            // Lo reintentamos desde la pantalla invisible (que sí lo recibe), y si tampoco,
+            // dejamos un aviso que con un solo toque empieza a grabar.
+            val retried = failedStarts <= 2 &&
+                handler.postDelayed({
+                    if (!isRecording && !StartActivity.launch(this, title, requestedMinutes, restart = false)) {
+                        askTap(title, requestedMinutes)
+                    }
+                }, if (failedStarts == 1) 1_500L else 15_000L)
+            if (!retried) askTap(title, requestedMinutes)
+            handler.postDelayed({ if (!isRecording && !uploading) stopSelf() }, 20_000L)
             return
         }
+        failedStarts = 0
 
         currentPath = file.absolutePath
         isRecording = true
@@ -204,6 +217,12 @@ class RecorderService : Service() {
         handler.postDelayed(stopRunnable, minutes * 60_000L)
         handler.postDelayed(silenceCheck, 45_000L)
         listener?.invoke()
+    }
+
+    private fun askTap(title: String, minutes: Int) {
+        Notifs.alert(this, "No se pudo empezar a grabar",
+            "Android no dejó usar el micrófono (o lo está usando otra app). Toca aquí para grabar.",
+            tap = StartActivity.pending(this, title, minutes, restart = false))
     }
 
     @Suppress("DEPRECATION")
