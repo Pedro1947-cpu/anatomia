@@ -64,6 +64,12 @@
             android:exported="false"
             android:permission="android.permission.BIND_JOB_SERVICE" />
 
+        <provider
+            android:name=".AudioProvider"
+            android:authorities="${applicationId}.audio"
+            android:exported="false"
+            android:grantUriPermissions="true" />
+
         <receiver
             android:name=".InstallReceiver"
             android:exported="false" />

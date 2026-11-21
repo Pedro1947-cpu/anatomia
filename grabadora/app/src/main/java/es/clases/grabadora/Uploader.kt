@@ -23,6 +23,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 object Uploader {
     private const val CHUNK = 4 * 1024 * 1024 // múltiplo de 256 KB, como pide Google
     private val running = AtomicBoolean(false)
+    /** true mientras hay una subida en marcha (automática o a mano). */
+    val busy get() = running.get()
 
     fun networkOk(c: Context): Boolean {
         val cm = c.getSystemService(ConnectivityManager::class.java)

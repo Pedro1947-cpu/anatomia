@@ -215,14 +215,30 @@ class MainActivity : Activity() {
                 else -> "$pending grabaciones por subir"
             }
             row(driveRows, label, null, if (manualUploading) null else "Subir", muted = true) { uploadNow() }
-            list.firstOrNull { it.status == Recording.ERROR && it.error.isNotBlank() }?.let {
+            list.firstOrNull { it.error.isNotBlank() }?.let {
                 row(driveRows, "Último error: " + it.error, null, muted = true)
+            }
+            // Plan B: mandarla tú con la app de Drive (o WhatsApp, correo…).
+            list.filter { java.io.File(it.path).length() > 0 }.forEach { r ->
+                row(driveRows, r.name.removeSuffix(".m4a"), null, "Enviar", muted = true) { shareRecording(r) }
             }
         }
     }
 
     private var manualUploading = false
     private var uploadMsg = ""
+
+    /** Abre el menú de compartir de Android con el audio (p. ej. para subirlo con la app de Drive). */
+    private fun shareRecording(r: Recording) {
+        val f = java.io.File(r.path)
+        val uri = AudioProvider.uri(this, f)
+        val send = Intent(Intent.ACTION_SEND).setType("audio/mp4")
+            .putExtra(Intent.EXTRA_STREAM, uri)
+            .putExtra(Intent.EXTRA_TITLE, f.name)
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        send.clipData = android.content.ClipData.newRawUri(f.name, uri)
+        startActivity(Intent.createChooser(send, "Enviar grabación"))
+    }
 
     /** Botón "Subir": sube ya lo que esté pendiente, sin esperar al reintento automático. */
     private fun uploadNow() {
@@ -232,6 +248,10 @@ class MainActivity : Activity() {
         }
         if (!Uploader.networkOk(this)) {
             Toast.makeText(this, "No hay internet ahora mismo", Toast.LENGTH_LONG).show(); return
+        }
+        if (Uploader.busy) {
+            Toast.makeText(this, "Ya se está subiendo en segundo plano. Espera un par de minutos.", Toast.LENGTH_LONG).show()
+            return
         }
         manualUploading = true
         uploadMsg = "Subiendo…"
@@ -245,8 +265,10 @@ class MainActivity : Activity() {
                 manualUploading = false
                 uploadMsg = ""
                 val left = Store.toUpload(this).size
+                val why = Store.toUpload(this).firstOrNull { it.error.isNotBlank() }?.error
                 Toast.makeText(this,
-                    if (ok && left == 0) "Subida a Drive ✓" else "No se pudo subir. Vuelve a intentarlo en un rato.",
+                    if (ok && left == 0) "Subida a Drive ✓"
+                    else "No se pudo subir" + (if (why != null) ": $why" else ". Prueba con Enviar."),
                     Toast.LENGTH_LONG).show()
                 if (left > 0) UploadJob.schedule(this)
                 refreshDrive()
