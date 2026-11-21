@@ -206,11 +206,52 @@ class MainActivity : Activity() {
             driveState.isEmpty() -> row(driveRows, "Comprobando…", null, muted = true)
             else -> row(driveRows, driveState, false, "Cambiar") { askScriptUrl() }
         }
-        val pending = Store.toUpload(this).size
+        val list = Store.toUpload(this)
+        val pending = list.size
         if (pending > 0) {
-            row(driveRows, if (pending == 1) "1 grabación por subir" else "$pending grabaciones por subir",
-                null, muted = true)
+            val label = when {
+                uploadMsg.isNotEmpty() -> uploadMsg
+                pending == 1 -> "1 grabación por subir"
+                else -> "$pending grabaciones por subir"
+            }
+            row(driveRows, label, null, if (manualUploading) null else "Subir", muted = true) { uploadNow() }
+            list.firstOrNull { it.status == Recording.ERROR && it.error.isNotBlank() }?.let {
+                row(driveRows, "Último error: " + it.error, null, muted = true)
+            }
         }
+    }
+
+    private var manualUploading = false
+    private var uploadMsg = ""
+
+    /** Botón "Subir": sube ya lo que esté pendiente, sin esperar al reintento automático. */
+    private fun uploadNow() {
+        if (manualUploading) return
+        if (RecorderService.isRecording) {
+            Toast.makeText(this, "Se subirá al terminar la grabación", Toast.LENGTH_SHORT).show()
+        }
+        if (!Uploader.networkOk(this)) {
+            Toast.makeText(this, "No hay internet ahora mismo", Toast.LENGTH_LONG).show(); return
+        }
+        manualUploading = true
+        uploadMsg = "Subiendo…"
+        refreshDrive()
+        Thread {
+            // Las que ya no tienen archivo (grabación cortada y vacía) no se pueden subir: fuera.
+            Store.toUpload(this).filter { !java.io.File(it.path).let { f -> f.exists() && f.length() > 0 } }
+                .forEach { Store.remove(this, it.path) }
+            val ok = Uploader.uploadAll(this) { msg -> runOnUiThread { uploadMsg = msg; refreshDrive() } }
+            runOnUiThread {
+                manualUploading = false
+                uploadMsg = ""
+                val left = Store.toUpload(this).size
+                Toast.makeText(this,
+                    if (ok && left == 0) "Subida a Drive ✓" else "No se pudo subir. Vuelve a intentarlo en un rato.",
+                    Toast.LENGTH_LONG).show()
+                if (left > 0) UploadJob.schedule(this)
+                refreshDrive()
+            }
+        }.start()
     }
 
     // ---------- Drive ----------
