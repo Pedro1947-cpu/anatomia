@@ -63,7 +63,15 @@ class RecorderService : Service() {
             // Si ya está en guardia, se le habla directamente (sin volver a arrancarlo desde
             // segundo plano, que es lo que hace que Android silencie el micrófono).
             instance?.takeIf { it.armedFlag }?.let { s ->
-                s.handler.post { s.handleStart(minutes, scheduled, title, restart) }
+                // Sin esto, con la pantalla apagada el móvil se vuelve a dormir antes de
+                // empezar y la grabación arranca tarde (hasta un minuto).
+                val wl = c.getSystemService(PowerManager::class.java)
+                    .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "grabadora:arranque")
+                    .apply { acquire(30_000L) }
+                s.handler.postAtFrontOfQueue {
+                    try { s.handleStart(minutes, scheduled, title, restart) }
+                    finally { if (wl.isHeld) wl.release() }
+                }
                 return
             }
             val i = Intent(c, RecorderService::class.java).setAction(ACT_START)
@@ -73,7 +81,15 @@ class RecorderService : Service() {
         }
 
         fun stop(c: Context) {
-            instance?.let { s -> s.handler.post { s.handleStop() }; return }
+            instance?.let { s ->
+                val wl = c.getSystemService(PowerManager::class.java)
+                    .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "grabadora:parada")
+                    .apply { acquire(30_000L) }
+                s.handler.postAtFrontOfQueue {
+                    try { s.handleStop() } finally { if (wl.isHeld) wl.release() }
+                }
+                return
+            }
             try {
                 c.startService(Intent(c, RecorderService::class.java).setAction(ACT_STOP))
             } catch (_: Exception) { }
