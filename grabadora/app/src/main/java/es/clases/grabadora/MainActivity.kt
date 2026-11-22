@@ -319,6 +319,7 @@ class MainActivity : Activity() {
             } catch (e: Exception) {
                 "No conecta: ${e.message}"
             }
+            if (msg.startsWith("✓")) Log.sync(this)
             runOnUiThread {
                 driveState = msg
                 refreshDrive()

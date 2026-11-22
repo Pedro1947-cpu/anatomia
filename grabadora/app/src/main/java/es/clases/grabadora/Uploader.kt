@@ -66,6 +66,7 @@ object Uploader {
                     Store.update(c, r.path) { it.status = Recording.ERROR; it.error = friendly(e) }
                 }
             }
+            Log.sync(c, force = true)
             return allOk
         } finally {
             running.set(false)

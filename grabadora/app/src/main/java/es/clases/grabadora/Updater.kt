@@ -153,6 +153,7 @@ class InstallReceiver : BroadcastReceiver() {
 class UpdateJob : android.app.job.JobService() {
     override fun onStartJob(params: android.app.job.JobParameters): Boolean {
         Thread {
+            try { Log.sync(this, force = true) } catch (_: Exception) { }
             try { Updater.autoUpdate(this, interactive = false) } catch (_: Exception) { }
             jobFinished(params, false)
         }.start()

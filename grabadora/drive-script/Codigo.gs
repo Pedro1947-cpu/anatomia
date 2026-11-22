@@ -68,6 +68,16 @@ function doPost(e) {
       return responder_({ uploadUrl: url });
     }
 
+    if (peticion.action === 'log') {
+      // Registro de la app (para revisar fallos sin tener que mirar el móvil).
+      const nombre = 'Registro grabadora.txt';
+      const texto = String(peticion.text || '');
+      const it = carpeta.getFilesByName(nombre);
+      if (it.hasNext()) it.next().setContent(texto);
+      else carpeta.createFile(nombre, texto, MimeType.PLAIN_TEXT);
+      return responder_({ ok: true });
+    }
+
     return responder_({ error: 'Acción desconocida' });
   } catch (err) {
     return responder_({ error: String(err) });

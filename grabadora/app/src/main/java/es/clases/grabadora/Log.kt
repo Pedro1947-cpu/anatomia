@@ -24,6 +24,24 @@ object Log {
         } catch (_: Exception) { }
     }
 
+    @Volatile private var lastSync = 0L
+
+    /** Manda el registro a tu Drive ("Grabaciones de clase/Registro grabadora.txt"). */
+    fun sync(c: Context, force: Boolean = false) {
+        val now = System.currentTimeMillis()
+        if (!force && now - lastSync < 10 * 60_000L) return
+        val url = Prefs(c).scriptUrl
+        if (url.isBlank()) return
+        lastSync = now
+        try {
+            val v = c.packageManager.getPackageInfo(c.packageName, 0).versionName
+            val head = "Grabadora $v · " + android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL +
+                " · Android " + android.os.Build.VERSION.RELEASE + " · enviado " + fmt.format(Date()) + "\n\n"
+            Uploader.callScript(url, org.json.JSONObject().put("action", "log")
+                .put("text", head + last(MAX).joinToString("\n")))
+        } catch (_: Exception) { }
+    }
+
     fun last(n: Int): List<String> {
         val d = dir ?: return emptyList()
         return try {
