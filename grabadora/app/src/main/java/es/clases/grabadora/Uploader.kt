@@ -62,6 +62,7 @@ object Uploader {
                     uploadOne(c, url, r, onProgress)
                 } catch (e: Exception) {
                     allOk = false
+                    Log.add("Subida falló (" + r.name + "): " + friendly(e))
                     Store.update(c, r.path) { it.status = Recording.ERROR; it.error = friendly(e) }
                 }
             }
@@ -148,6 +149,7 @@ object Uploader {
     }
 
     private fun finish(c: Context, r: Recording, id: String) {
+        Log.add("Subida ✓ " + r.name)
         Store.update(c, r.path) {
             it.status = Recording.DONE
             it.uploadUrl = ""

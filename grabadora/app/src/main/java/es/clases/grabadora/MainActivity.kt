@@ -40,7 +40,7 @@ class MainActivity : Activity() {
     private var wasRecording = false
     private val ticker = object : Runnable {
         override fun run() {
-            if (RecorderService.isRecording || wasRecording) refreshStatus()
+            if (RecorderService.isRecording || wasRecording) { refreshStatus(); refreshLog() }
             wasRecording = RecorderService.isRecording
             handler.postDelayed(this, 1000)
         }
@@ -53,6 +53,7 @@ class MainActivity : Activity() {
     private val cardTimer by lazy { findViewById<TextView>(R.id.cardTimer) }
     private val cardSub by lazy { findViewById<TextView>(R.id.cardSub) }
     private val driveRows by lazy { findViewById<LinearLayout>(R.id.driveRows) }
+    private val logText by lazy { findViewById<TextView>(R.id.logText) }
     private val permRows by lazy { findViewById<LinearLayout>(R.id.permRows) }
     private val btnUpdate by lazy { findViewById<TextView>(R.id.btnUpdate) }
     private val btnRecord by lazy { findViewById<TextView>(R.id.btnRecord) }
@@ -99,6 +100,9 @@ class MainActivity : Activity() {
         refreshStatus()
         refreshDrive()
         refreshPermissions()
+        Log.add("App abierta · en guardia=" + RecorderService.armed + " · próxima=" +
+            prefs.nextTitle.ifEmpty { "—" } + (if (prefs.nextBegin > 0) " " + java.text.SimpleDateFormat("dd/MM HH:mm", es).format(java.util.Date(prefs.nextBegin)) else ""))
+        handler.postDelayed({ refreshLog() }, 1500)
         handler.post(ticker)
     }
 
@@ -158,6 +162,11 @@ class MainActivity : Activity() {
             cardTitle.text = "Sin clases a la vista"
             cardSub.text = CalendarSource.diagnose(this)
         }
+    }
+
+    private fun refreshLog() {
+        val l = Log.last(25)
+        logText.text = if (l.isEmpty()) "Sin datos todavía" else l.joinToString("\n")
     }
 
     // ---------- Filas ----------

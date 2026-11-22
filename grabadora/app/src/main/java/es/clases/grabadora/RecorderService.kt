@@ -97,6 +97,7 @@ class RecorderService : Service() {
         override fun run() {
             if (!isRecording) return
             val amp = try { recorder?.maxAmplitude ?: -1 } catch (_: Exception) { -1 }
+            Log.add("Nivel del micro: $amp")
             if (amp == 0) {
                 val left = Prefs(this@RecorderService).stopAt - System.currentTimeMillis()
                 val minutes = if (left > 0) ((left + 59_999) / 60_000).toInt() else 0
@@ -126,6 +127,7 @@ class RecorderService : Service() {
             ACT_ARM -> {
                 if (isRecording || uploading || goForeground(idleNotification())) armedFlag = true
                 else stopSelf()
+                Log.add("En guardia: " + armedFlag)
             }
             ACT_START -> handleStart(
                 intent.getIntExtra("minutes", 0), intent.getBooleanExtra("scheduled", false),
@@ -138,6 +140,7 @@ class RecorderService : Service() {
     }
 
     private fun handleStart(minutes: Int, scheduled: Boolean, title: String, restart: Boolean) {
+        Log.add("Empezar: " + title.ifEmpty { "—" } + " · $minutes min · reinicio=$restart · grabando=$isRecording")
         if (isRecording && restart) {
             // El micrófono estaba mudo: tiramos ese trozo y volvemos a empezar.
             goForeground(recordingNotification(Prefs(this).stopAt))
@@ -199,6 +202,7 @@ class RecorderService : Service() {
         }
         true
     } catch (e: Exception) {
+        Log.add("No se pudo poner en primer plano: " + e)
         false
     }
 
@@ -253,6 +257,7 @@ class RecorderService : Service() {
                 maxAmplitude // pone a cero el medidor para la comprobación de silencio
             }
         } catch (e: Exception) {
+            Log.add("El micrófono no arrancó: " + e)
             recorder?.release()
             recorder = null
             file.delete()
@@ -273,6 +278,7 @@ class RecorderService : Service() {
             return
         }
         failedStarts = 0
+        Log.add("Grabando: " + name)
 
         currentPath = file.absolutePath
         isRecording = true
@@ -309,6 +315,7 @@ class RecorderService : Service() {
 
     private fun stopRecording(continuing: Boolean = false, discard: Boolean = false) {
         if (!isRecording) return
+        Log.add("Parar grabación" + (if (discard) " (descartada, micro mudo)" else ""))
         handler.removeCallbacks(stopRunnable)
         handler.removeCallbacks(silenceCheck)
         Scheduler.cancelStop(this)
@@ -380,6 +387,7 @@ class RecorderService : Service() {
     }
 
     override fun onDestroy() {
+        Log.add("Servicio cerrado" + (if (isRecording) " (¡grabando!)" else ""))
         if (instance === this) instance = null
         armedFlag = false
         if (isRecording) stopRecordingQuietly()

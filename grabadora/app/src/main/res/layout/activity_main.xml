@@ -98,6 +98,18 @@
             android:layout_height="wrap_content"
             android:orientation="vertical" />
 
+        <TextView style="@style/Section" android:text="Registro" />
+
+        <TextView
+            android:id="@+id/logText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="monospace"
+            android:lineSpacingExtra="2dp"
+            android:textColor="@color/muted"
+            android:textIsSelectable="true"
+            android:textSize="11sp" />
+
         <TextView
             android:id="@+id/btnUpdate"
             android:layout_width="match_parent"

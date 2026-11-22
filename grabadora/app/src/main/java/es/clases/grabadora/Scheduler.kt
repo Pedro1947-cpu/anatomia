@@ -59,7 +59,9 @@ object Scheduler {
         p.nextBegin = ev?.begin ?: 0L
         p.nextEnd = ev?.end ?: 0L
         RecorderService.refresh()
-        if (ev == null) return
+        if (ev == null) { Log.add("Programar: no hay próxima clase"); return }
+        Log.add("Programada: " + ev.title + " " + java.text.SimpleDateFormat("dd/MM HH:mm", java.util.Locale("es", "ES")).format(java.util.Date(ev.begin)) +
+            " · exacta=" + canExact(c))
         val show = PendingIntent.getActivity(
             c, 0, Intent(c, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE
         )

@@ -8,7 +8,10 @@ class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(c: Context, intent: Intent) {
         when (intent.action) {
             Scheduler.ACTION_START -> {
+                Log.init(c)
                 val p = Prefs(c)
+                Log.add("Alarma de clase: " + p.nextTitle + " · en guardia=" + RecorderService.armed +
+                    " · micro=" + (c.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == 0))
                 val title = p.nextTitle
                 val begin = p.nextBegin
                 val end = p.nextEnd
@@ -29,6 +32,7 @@ class AlarmReceiver : BroadcastReceiver() {
                 Scheduler.scheduleFallback(c, title, minutes)
             }
             Scheduler.ACTION_FALLBACK -> {
+                Log.add("Plan B (20 s): grabando=" + RecorderService.isRecording)
                 if (RecorderService.isRecording) return
                 val title = intent.getStringExtra("title") ?: ""
                 val minutes = intent.getIntExtra("minutes", 60)
@@ -36,6 +40,7 @@ class AlarmReceiver : BroadcastReceiver() {
                     RecorderService.start(c, minutes, scheduled = true, title = title)
                 } catch (e: Exception) {
                     // Android no nos ha dejado arrancar solos: pedimos un toque al usuario.
+                    Log.add("Plan B falló: " + e)
                     Notifs.askToStart(c, title, minutes)
                 }
             }
@@ -46,6 +51,7 @@ class AlarmReceiver : BroadcastReceiver() {
 
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(c: Context, intent: Intent) {
+        Log.add("Sistema: " + intent.action?.substringAfterLast('.'))
         Scheduler.reschedule(c)
         if (!RecorderService.isRecording) Store.recoverInterrupted(c)
         UploadJob.schedule(c)
