@@ -93,6 +93,9 @@ class MainActivity : Activity() {
         super.onResume()
         RecorderService.listener = { runOnUiThread { refreshStatus() } }
         Scheduler.reschedule(this)
+        // Con la app delante dejamos el servicio en guardia: así podrá usar el micrófono
+        // de verdad en las próximas clases aunque cierres la app.
+        if (has(Manifest.permission.RECORD_AUDIO)) RecorderService.arm(this)
         refreshStatus()
         refreshDrive()
         refreshPermissions()

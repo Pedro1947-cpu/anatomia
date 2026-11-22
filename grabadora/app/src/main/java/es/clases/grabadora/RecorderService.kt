@@ -24,6 +24,7 @@ class RecorderService : Service() {
     companion object {
         private const val ACT_START = "start"
         private const val ACT_STOP = "stop"
+        private const val ACT_ARM = "arm"
         /** Tope de seguridad para grabaciones manuales que se olvidan encendidas. */
         const val MANUAL_MAX_MINUTES = 6 * 60
 
@@ -39,7 +40,32 @@ class RecorderService : Service() {
         /** Escucha para que la pantalla se actualice al empezar/parar. */
         var listener: (() -> Unit)? = null
 
+        /**
+         * El servicio vivo y "en guardia": se arrancó con la app delante, así que Android
+         * le deja usar el micrófono de verdad mientras siga vivo, aunque la app esté cerrada.
+         */
+        @Volatile var instance: RecorderService? = null
+            private set
+        val armed get() = instance?.armedFlag == true
+
+        /** Actualiza el texto "Próxima: …" de la notificación en guardia. */
+        fun refresh() { instance?.let { s -> s.handler.post { s.refreshIdle() } } }
+
+        /** Llamar con la app delante: deja el servicio en guardia para las próximas clases. */
+        fun arm(c: Context) {
+            if (armed) { instance?.handler?.post { instance?.refreshIdle() }; return }
+            try {
+                c.startForegroundService(Intent(c, RecorderService::class.java).setAction(ACT_ARM))
+            } catch (_: Exception) { }
+        }
+
         fun start(c: Context, minutes: Int, scheduled: Boolean, title: String = "", restart: Boolean = false) {
+            // Si ya está en guardia, se le habla directamente (sin volver a arrancarlo desde
+            // segundo plano, que es lo que hace que Android silencie el micrófono).
+            instance?.takeIf { it.armedFlag }?.let { s ->
+                s.handler.post { s.handleStart(minutes, scheduled, title, restart) }
+                return
+            }
             val i = Intent(c, RecorderService::class.java).setAction(ACT_START)
                 .putExtra("minutes", minutes).putExtra("scheduled", scheduled)
                 .putExtra("title", title).putExtra("restart", restart)
@@ -47,6 +73,7 @@ class RecorderService : Service() {
         }
 
         fun stop(c: Context) {
+            instance?.let { s -> s.handler.post { s.handleStop() }; return }
             try {
                 c.startService(Intent(c, RecorderService::class.java).setAction(ACT_STOP))
             } catch (_: Exception) { }
@@ -57,6 +84,7 @@ class RecorderService : Service() {
     private var currentPath: String? = null
     private var wakeLock: PowerManager.WakeLock? = null
     private val handler = Handler(Looper.getMainLooper())
+    @Volatile private var armedFlag = false
     private val stopRunnable = Runnable { stopRecording() }
     /** Cuántas veces hemos rearrancado esta clase por micrófono mudo (para no entrar en bucle). */
     private var restarts = 0
@@ -87,38 +115,80 @@ class RecorderService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    override fun onCreate() {
+        super.onCreate()
+        instance = this
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Notifs.createChannels(this)
         when (intent?.action) {
-            ACT_START -> {
-                val minutes = intent.getIntExtra("minutes", 0)
-                val scheduled = intent.getBooleanExtra("scheduled", false)
-                val title = intent.getStringExtra("title") ?: ""
-                val restart = intent.getBooleanExtra("restart", false)
-                if (isRecording && restart) {
-                    // El micrófono estaba mudo: tiramos ese trozo y volvemos a empezar.
-                    goForeground(recordingNotification(Prefs(this).stopAt))
-                    stopRecording(continuing = true, discard = true)
-                    startRecording(minutes, scheduled, title)
-                } else if (!isRecording) {
-                    restarts = 0
-                    startRecording(minutes, scheduled, title)
-                } else if (scheduled) {
-                    // Empieza otra clase seguida: cerramos la anterior y abrimos la nueva.
-                    goForeground(recordingNotification(Prefs(this).stopAt))
-                    stopRecording(continuing = true)
-                    startRecording(minutes, scheduled, title)
-                } else {
-                    goForeground(recordingNotification(Prefs(this).stopAt)) // ya estaba grabando
-                }
+            ACT_ARM -> {
+                if (isRecording || uploading || goForeground(idleNotification())) armedFlag = true
+                else stopSelf()
             }
-            ACT_STOP -> {
-                if (isRecording) stopRecording()
-                else if (!uploading) stopSelf()
-            }
-            else -> if (!isRecording && !uploading) stopSelf()
+            ACT_START -> handleStart(
+                intent.getIntExtra("minutes", 0), intent.getBooleanExtra("scheduled", false),
+                intent.getStringExtra("title") ?: "", intent.getBooleanExtra("restart", false)
+            )
+            ACT_STOP -> handleStop()
+            else -> if (!isRecording && !uploading) finishOrIdle()
         }
-        return START_NOT_STICKY
+        return if (armedFlag) START_STICKY else START_NOT_STICKY
+    }
+
+    private fun handleStart(minutes: Int, scheduled: Boolean, title: String, restart: Boolean) {
+        if (isRecording && restart) {
+            // El micrófono estaba mudo: tiramos ese trozo y volvemos a empezar.
+            goForeground(recordingNotification(Prefs(this).stopAt))
+            stopRecording(continuing = true, discard = true)
+            startRecording(minutes, scheduled, title)
+        } else if (!isRecording) {
+            restarts = 0
+            startRecording(minutes, scheduled, title)
+        } else if (scheduled) {
+            // Empieza otra clase seguida: cerramos la anterior y abrimos la nueva.
+            goForeground(recordingNotification(Prefs(this).stopAt))
+            stopRecording(continuing = true)
+            startRecording(minutes, scheduled, title)
+        } else {
+            goForeground(recordingNotification(Prefs(this).stopAt)) // ya estaba grabando
+        }
+    }
+
+    private fun handleStop() {
+        if (isRecording) stopRecording()
+        else if (!uploading) finishOrIdle()
+    }
+
+    /** Sin nada que hacer: si está en guardia se queda esperando; si no, se cierra. */
+    private fun finishOrIdle() {
+        if (armedFlag && goForeground(idleNotification())) return
+        armedFlag = false
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
+    }
+
+    fun refreshIdle() {
+        if (armedFlag && !isRecording && !uploading) goForeground(idleNotification())
+    }
+
+    private fun idleNotification(): Notification {
+        val p = Prefs(this)
+        val es = Locale("es", "ES")
+        val text = if (p.nextBegin > 0) {
+            val day = SimpleDateFormat("EEEE", es).format(Date(p.nextBegin))
+            val hour = SimpleDateFormat("HH:mm", es).format(Date(p.nextBegin))
+            "Próxima: " + p.nextTitle.ifEmpty { "clase" } + " · $day $hour"
+        } else "Esperando la próxima clase"
+        return Notification.Builder(this, Notifs.CH_IDLE)
+            .setSmallIcon(R.drawable.ic_mic).setColor(0xFF111111.toInt())
+            .setContentTitle("Lista para grabar")
+            .setContentText(text)
+            .setOngoing(true)
+            .setShowWhen(false)
+            .setContentIntent(Notifs.openApp(this))
+            .build()
     }
 
     private fun goForeground(n: Notification): Boolean = try {
@@ -188,7 +258,7 @@ class RecorderService : Service() {
             file.delete()
             startedAt = 0
             failedStarts++
-            stopForeground(STOP_FOREGROUND_REMOVE)
+            if (armedFlag) goForeground(idleNotification()) else stopForeground(STOP_FOREGROUND_REMOVE)
             // Casi siempre es que Android no da el micrófono a una app en segundo plano.
             // Lo reintentamos desde la pantalla invisible (que sí lo recibe), y si tampoco,
             // dejamos un aviso que con un solo toque empieza a grabar.
@@ -199,7 +269,7 @@ class RecorderService : Service() {
                     }
                 }, if (failedStarts == 1) 1_500L else 15_000L)
             if (!retried) askTap(title, requestedMinutes)
-            handler.postDelayed({ if (!isRecording && !uploading) stopSelf() }, 20_000L)
+            handler.postDelayed({ if (!isRecording && !uploading) finishOrIdle() }, 20_000L)
             return
         }
         failedStarts = 0
@@ -275,8 +345,7 @@ class RecorderService : Service() {
         if (Store.toUpload(this).isEmpty() || !Uploader.networkOk(this)) {
             UploadJob.schedule(this)
             if (!continuing) {
-                stopForeground(STOP_FOREGROUND_REMOVE)
-                stopSelf()
+                finishOrIdle()
             }
             return
         }
@@ -304,14 +373,15 @@ class RecorderService : Service() {
                 if (!ok) UploadJob.schedule(this)
                 listener?.invoke()
                 if (!isRecording) {
-                    stopForeground(STOP_FOREGROUND_REMOVE)
-                    stopSelf()
+                    finishOrIdle()
                 }
             }
         }.start()
     }
 
     override fun onDestroy() {
+        if (instance === this) instance = null
+        armedFlag = false
         if (isRecording) stopRecordingQuietly()
         super.onDestroy()
     }

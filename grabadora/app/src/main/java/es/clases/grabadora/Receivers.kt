@@ -17,6 +17,11 @@ class AlarmReceiver : BroadcastReceiver() {
                 Scheduler.reschedule(c, maxOf(now, begin))
                 val minutes = if (end > now) ((end - now + 59_999) / 60_000).toInt()
                 else p.durationMinutes
+                if (RecorderService.armed) {
+                    // El servicio ya estaba en guardia con el micrófono: empieza sin más.
+                    RecorderService.start(c, minutes, scheduled = true, title = title)
+                    return
+                }
                 // 1) Arrancamos desde una pantalla invisible para que el micrófono no salga mudo.
                 Notifs.startFullScreen(c, title, minutes)
                 StartActivity.launch(c, title, minutes, restart = false)
@@ -45,5 +50,11 @@ class BootReceiver : BroadcastReceiver() {
         if (!RecorderService.isRecording) Store.recoverInterrupted(c)
         UploadJob.schedule(c)
         UpdateJob.schedule(c)
+        if ((intent.action == Intent.ACTION_BOOT_COMPLETED || intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) &&
+            !RecorderService.armed) {
+            // Tras reiniciar, Android no deja coger el micrófono hasta abrir la app una vez.
+            Notifs.alert(c, "Abre la grabadora una vez",
+                "Se ha reiniciado o actualizado. Toca aquí para dejarla lista para las clases.")
+        }
     }
 }

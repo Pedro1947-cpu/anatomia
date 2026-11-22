@@ -58,6 +58,7 @@ object Scheduler {
         p.nextTitle = ev?.title ?: ""
         p.nextBegin = ev?.begin ?: 0L
         p.nextEnd = ev?.end ?: 0L
+        RecorderService.refresh()
         if (ev == null) return
         val show = PendingIntent.getActivity(
             c, 0, Intent(c, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE

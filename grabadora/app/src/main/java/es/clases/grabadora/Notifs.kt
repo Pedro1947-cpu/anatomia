@@ -11,6 +11,7 @@ object Notifs {
     const val CH_REC = "grabando"
     const val CH_ALERT = "avisos"
     const val CH_UPLOAD = "subidas"
+    const val CH_IDLE = "en_guardia"
     const val ID_REC = 1
     const val ID_ALERT = 2
     const val ID_START = 3
@@ -23,6 +24,10 @@ object Notifs {
         )
         nm.createNotificationChannel(
             NotificationChannel(CH_ALERT, "Avisos importantes", NotificationManager.IMPORTANCE_HIGH)
+        )
+        nm.createNotificationChannel(
+            NotificationChannel(CH_IDLE, "Lista para grabar", NotificationManager.IMPORTANCE_MIN)
+                .apply { setSound(null, null); enableVibration(false); setShowBadge(false) }
         )
         nm.createNotificationChannel(
             NotificationChannel(CH_UPLOAD, "Subidas a Drive", NotificationManager.IMPORTANCE_LOW)
