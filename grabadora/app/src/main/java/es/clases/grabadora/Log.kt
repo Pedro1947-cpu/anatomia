@@ -24,10 +24,12 @@ object Log {
         } catch (_: Exception) { }
     }
 
-    fun last(n: Int): List<String> = try {
-        File(dir ?: return emptyList(), "registro.txt").takeIf { it.exists() }?.readLines()?.takeLast(n)?.reversed()
-            ?: emptyList()
-    } catch (_: Exception) { emptyList() }
+    fun last(n: Int): List<String> {
+        val d = dir ?: return emptyList()
+        return try {
+            File(d, "registro.txt").takeIf { it.exists() }?.readLines()?.takeLast(n)?.reversed() ?: emptyList()
+        } catch (_: Exception) { emptyList() }
+    }
 }
 
 class App : Application() {
