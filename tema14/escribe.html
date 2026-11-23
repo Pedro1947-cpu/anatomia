@@ -56,7 +56,7 @@ kbd{font:600 11px system-ui;background:var(--card);border:1px solid var(--line);
 <div class="top"><div class="ctl"><span class="brand">Anatomía</span><div class="selw"><div class="sel ts"><select id="tsel"></select></div><div class="sel ss"><select id="sel"></select></div></div><select id="mode" hidden><option value="smart">s</option></select></div><div class="rt"><span class="clk" id="clk" title="Toca para pausar / seguir">⏱ <b id="clkt">0:00</b></span><span class="cnt" id="cnt"></span></div></div>
 <div class="prog"><i id="bar"></i></div><div class="tot" id="tot"></div>
 <div class="wrap" id="wrap"></div>
-<div class="keys"><span class="hk"><kbd>Enter</kbd> comprobar / siguiente · si no lo sabes, deja vacío y pulsa <kbd>Enter</kbd> · </span><span class="ver">v11232240</span></div>
+<div class="keys"><span class="hk"><kbd>Enter</kbd> comprobar / siguiente · si no lo sabes, deja vacío y pulsa <kbd>Enter</kbd> · </span><span class="ver">v11232250</span></div>
 <button type="button" class="clk" id="syncb" title="Pasar el progreso entre móvil y Mac">⇄ Progreso</button><div class="syn" id="syn"><div><h3>Progreso entre dispositivos</h3><div id="fbbox" style="margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--line)"></div><p><b>Manual (por si falla la sincronización):</b></p><p>1) En el dispositivo con más progreso: «Copiar código». 2) En el otro: pega el código abajo y pulsa «Importar». Se combinan los dos (gana lo más reciente de cada pregunta). Puedes mandarte el código por Notas, mensaje o correo.</p><textarea id="syc" readonly></textarea><button type="button" id="sycp">Copiar código</button><button type="button" class="g" id="syx">Cerrar</button><textarea id="syi" placeholder="Pega aquí el código del otro dispositivo" style="margin-top:12px"></textarea><button type="button" id="syim">Importar</button><div class="ok" id="syok"></div></div></div>
 <button type="button" class="clk" id="avb" title="Avisos de examen" style="position:fixed;left:10px;bottom:8px;z-index:20;font-size:12px;padding:5px 10px">📌 Avisos</button><div class="syn" id="avi"><div style="max-width:560px;max-height:85vh;overflow:auto;font-size:14px;line-height:1.55"><h3 style="margin-top:0">Avisos de examen</h3>
 <p style="color:var(--mut);margin:0 0 10px">Sacados de las clases grabadas y de los apuntes de la comisión. Las grabaciones tienen ruido; ante la duda, confírmalo.</p>
@@ -93,7 +93,7 @@ function judge1(inp,ans){const W={uno:1,primera:1,dos:2,segunda:2,tres:3,tercera
 let deck=[],pos=0,score=0,wrong=[],state='ask';
 const sel=$('sel'),tsel=$('tsel');const TN=['14','15','16','17','18','19','20'];const tmOf=n=>n>=600?'20':n>=500?'19':n>=400?'18':n>=300?'17':n>=200?'16':n>=100?'15':'14';
 tsel.innerHTML=TN.map(x=>`<option value="${x}">Tema ${x}</option>`).join('');
-function fillSel(tn,keep){sel.innerHTML=`<option value="${tn==='14'?'all':'all'+tn}">Todo el tema ${tn}</option>`+(tn==='15'?'<option value="all15i">★ Lo importante</option>':'')+SLIDES.map((s,i)=>tmOf(s.n)===tn&&s.ans.some(Boolean)?`<option value="${i}">Diap. ${s.n%100} · ${s.t}</option>`:'').join('');if(keep&&[...sel.options].some(o=>o.value===keep))sel.value=keep}
+function fillSel(tn,keep){sel.innerHTML=`<option value="${tn==='14'?'all':'all'+tn}">Todo el tema ${tn}</option>`+SLIDES.map((s,i)=>tmOf(s.n)===tn&&s.ans.some(Boolean)?`<option value="${i}">Diap. ${s.n%100} · ${s.t}</option>`:'').join('');if(keep&&[...sel.options].some(o=>o.value===keep))sel.value=keep}
 fillSel('14');
 const IT={k:'t14items',d:null,get(){if(!this.d){try{this.d=JSON.parse(localStorage.getItem(this.k)||'{}')}catch(e){this.d={}}}return this.d},
  rec(id,r){const d=this.get(),x=d[id]||{s:0,c:0,w:0};x.s++;if(r===2){x.c++}else{x.c=0;x.w++}x.t=Date.now();const _n=+String(id).split('-')[0];x.r=this.R(tm(_n));x.q=this.RS(_n);d[id]=x;try{localStorage.setItem(this.k,JSON.stringify(d))}catch(e){}},
@@ -198,5 +198,5 @@ tsel.onchange=()=>{fillSel(tsel.value);sel.onchange()};sel.onchange=()=>{try{loc
  window.t14sync=()=>{if(getC())sync()};draw();if(getC())sync();setInterval(()=>{if(!document.hidden&&getC()&&state!=='done')sync()},20000);document.addEventListener('visibilitychange',()=>{if(!document.hidden&&getC())sync()});
 })();
 
-(function(){const B='11232240';fetch('../version.txt?'+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():'').then(v=>{v=(v||'').trim();if(v&&v!==B&&sessionStorage.getItem('t14rl')!==v){sessionStorage.setItem('t14rl',v);location.replace(location.pathname+'?v='+v)}}).catch(()=>{})})();
+(function(){const B='11232250';fetch('../version.txt?'+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():'').then(v=>{v=(v||'').trim();if(v&&v!==B&&sessionStorage.getItem('t14rl')!==v){sessionStorage.setItem('t14rl',v);location.replace(location.pathname+'?v='+v)}}).catch(()=>{})})();
 </script></body></html>
