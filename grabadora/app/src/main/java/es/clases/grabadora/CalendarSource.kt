@@ -43,6 +43,16 @@ object CalendarSource {
     }
 
     /** Primera clase que empieza después de [after] (busca 8 días hacia delante). */
+    /**
+     * Las clases acaban siempre 10 minutos antes de la hora (a las :50).
+     * Si en el calendario termina en punto, paramos a menos diez.
+     */
+    private fun realEnd(begin: Long, end: Long): Long {
+        val cal = java.util.Calendar.getInstance().apply { timeInMillis = end }
+        val onTheHour = cal.get(java.util.Calendar.MINUTE) == 0
+        return if (onTheHour && end - 10 * 60_000L - begin >= 20 * 60_000L) end - 10 * 60_000L else end
+    }
+
     /** La clase que está en curso ahora mismo (si la hay). */
     fun currentEvent(c: Context, now: Long = System.currentTimeMillis()): ClassEvent? {
         var from = now - 5L * 3600 * 1000
@@ -86,7 +96,7 @@ object CalendarSource {
                     if (begin <= after || end <= begin || cancelled) continue
                     val desc = cur.getString(4).orEmpty()
                     if (filter.isNotEmpty() && !(title + " " + desc).lowercase().contains(filter)) continue
-                    return ClassEvent(title.ifEmpty { "Clase" }, begin, end)
+                    return ClassEvent(title.ifEmpty { "Clase" }, begin, realEnd(begin, end))
                 }
                 null
             }
