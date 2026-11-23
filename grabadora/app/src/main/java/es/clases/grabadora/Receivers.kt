@@ -44,7 +44,18 @@ class AlarmReceiver : BroadcastReceiver() {
                     Notifs.askToStart(c, title, minutes)
                 }
             }
-            Scheduler.ACTION_STOP -> RecorderService.stop(c)
+            Scheduler.ACTION_STOP -> {
+                Log.init(c)
+                val at = intent.getLongExtra("at", 0L)
+                val stopAt = Prefs(c).stopAt
+                if (at > 0 && stopAt > 0 && kotlin.math.abs(stopAt - at) > 60_000L) {
+                    // Era la parada de la clase anterior y ya ha empezado la siguiente: no se toca.
+                    Log.add("Parada de la clase anterior ignorada (sigue grabando la nueva)")
+                } else {
+                    Log.add("Fin de la clase: parar")
+                    RecorderService.stop(c)
+                }
+            }
         }
     }
 }

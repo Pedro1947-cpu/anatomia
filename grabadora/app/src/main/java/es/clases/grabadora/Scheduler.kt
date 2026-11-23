@@ -88,7 +88,11 @@ object Scheduler {
     }
 
     fun scheduleStop(c: Context, at: Long) {
-        val stop = pi(c, ACTION_STOP, 2)
+        // Lleva la hora de fin: así una parada atrasada de la clase anterior no corta la siguiente.
+        val stop = PendingIntent.getBroadcast(
+            c, 2, Intent(c, AlarmReceiver::class.java).setAction(ACTION_STOP).putExtra("at", at),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
         try {
             am(c).setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, stop)
         } catch (e: SecurityException) {

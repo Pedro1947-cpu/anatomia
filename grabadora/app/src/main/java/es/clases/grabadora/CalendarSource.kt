@@ -43,6 +43,18 @@ object CalendarSource {
     }
 
     /** Primera clase que empieza después de [after] (busca 8 días hacia delante). */
+    /** La clase que está en curso ahora mismo (si la hay). */
+    fun currentEvent(c: Context, now: Long = System.currentTimeMillis()): ClassEvent? {
+        var from = now - 5L * 3600 * 1000
+        repeat(15) {
+            val ev = nextEvent(c, from) ?: return null
+            if (ev.begin > now) return null
+            if (ev.end > now + 60_000L) return ev
+            from = ev.begin
+        }
+        return null
+    }
+
     fun nextEvent(c: Context, after: Long): ClassEvent? {
         val p = Prefs(c)
         val ids = p.calendarIds

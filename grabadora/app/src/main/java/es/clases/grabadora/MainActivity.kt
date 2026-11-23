@@ -120,7 +120,17 @@ class MainActivity : Activity() {
             RecorderService.stop(this)
         } else {
             if (!has(Manifest.permission.RECORD_AUDIO)) { requestPermissions(runtimeMissing(), 1); return }
-            RecorderService.start(this, 0, scheduled = false, title = "Ensayo")
+            // Si hay una clase en curso, la grabación lleva su nombre y para al acabar la clase;
+            // si no, es un ensayo.
+            val now = System.currentTimeMillis()
+            val cur = CalendarSource.currentEvent(this, now)
+            if (cur != null) {
+                val minutes = ((cur.end - now + 59_999) / 60_000).toInt()
+                Log.add("Grabar a mano durante " + cur.title)
+                RecorderService.start(this, minutes, scheduled = false, title = cur.title)
+            } else {
+                RecorderService.start(this, 0, scheduled = false, title = "Ensayo")
+            }
         }
         handler.postDelayed({ refreshStatus(); refreshDrive() }, 700)
     }

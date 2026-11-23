@@ -9,7 +9,7 @@ import java.util.Locale
 
 /** Registro sencillo de lo que hace la app, visible en la pantalla para diagnosticar. */
 object Log {
-    private const val MAX = 150
+    private const val MAX = 400
     @Volatile private var dir: File? = null
     private val fmt = SimpleDateFormat("dd/MM HH:mm:ss", Locale("es", "ES"))
 

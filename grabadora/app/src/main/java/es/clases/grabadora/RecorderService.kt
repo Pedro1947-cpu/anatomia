@@ -104,6 +104,7 @@ class RecorderService : Service() {
     private val stopRunnable = Runnable { stopRecording() }
     /** Cuántas veces hemos rearrancado esta clase por micrófono mudo (para no entrar en bucle). */
     private var restarts = 0
+    private var checks = 0
     /**
      * Si Android nos da el micrófono "mudo", la amplitud se queda exactamente en 0
      * (con un micrófono de verdad nunca es 0 durante un minuto entero).
@@ -113,7 +114,7 @@ class RecorderService : Service() {
         override fun run() {
             if (!isRecording) return
             val amp = try { recorder?.maxAmplitude ?: -1 } catch (_: Exception) { -1 }
-            Log.add("Nivel del micro: $amp")
+            if (checks++ % 10 == 0 || amp == 0) Log.add("Nivel del micro: $amp")
             if (amp == 0) {
                 val left = Prefs(this@RecorderService).stopAt - System.currentTimeMillis()
                 val minutes = if (left > 0) ((left + 59_999) / 60_000).toInt() else 0
