@@ -33,6 +33,7 @@ input::placeholder{color:var(--mut)}
 .fb span{display:inline-block;font-weight:700;padding:5px 14px;border-radius:999px;animation:pop .25s ease-out}
 .fb .ok{color:var(--ok);background:var(--okb)}.fb .no{color:var(--no);background:var(--nob)}
 .fb small{color:var(--mut);font-size:14px}
+.fb .ovr{background:transparent;color:var(--mut);border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-size:13px;cursor:pointer;margin-top:2px}.fb .ovr:hover{color:var(--fg)}
 @keyframes pop{from{transform:scale(.85);opacity:0}}
 .end{text-align:center;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:34px 40px;box-shadow:var(--sh)}
 .end b{font-size:52px;font-family:"Iowan Old Style",Georgia,serif;display:block;color:var(--ac)}
@@ -56,7 +57,7 @@ kbd{font:600 11px system-ui;background:var(--card);border:1px solid var(--line);
 <div class="top"><div class="ctl"><span class="brand">Anatomía</span><div class="selw"><div class="sel ts"><select id="tsel"></select></div><div class="sel ss"><select id="sel"></select></div></div><select id="mode" hidden><option value="smart">s</option></select></div><div class="rt"><span class="clk" id="clk" title="Toca para pausar / seguir">⏱ <b id="clkt">0:00</b></span><span class="cnt" id="cnt"></span></div></div>
 <div class="prog"><i id="bar"></i></div><div class="tot" id="tot"></div>
 <div class="wrap" id="wrap"></div>
-<div class="keys"><span class="hk"><kbd>Enter</kbd> comprobar / siguiente · si no lo sabes, deja vacío y pulsa <kbd>Enter</kbd> · </span><span class="ver">v11232250</span></div>
+<div class="keys"><span class="hk"><kbd>Enter</kbd> comprobar / siguiente · si no lo sabes, deja vacío y pulsa <kbd>Enter</kbd> · </span><span class="ver">v11240910</span></div>
 <button type="button" class="clk" id="syncb" title="Pasar el progreso entre móvil y Mac">⇄ Progreso</button><div class="syn" id="syn"><div><h3>Progreso entre dispositivos</h3><div id="fbbox" style="margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--line)"></div><p><b>Manual (por si falla la sincronización):</b></p><p>1) En el dispositivo con más progreso: «Copiar código». 2) En el otro: pega el código abajo y pulsa «Importar». Se combinan los dos (gana lo más reciente de cada pregunta). Puedes mandarte el código por Notas, mensaje o correo.</p><textarea id="syc" readonly></textarea><button type="button" id="sycp">Copiar código</button><button type="button" class="g" id="syx">Cerrar</button><textarea id="syi" placeholder="Pega aquí el código del otro dispositivo" style="margin-top:12px"></textarea><button type="button" id="syim">Importar</button><div class="ok" id="syok"></div></div></div>
 <button type="button" class="clk" id="avb" title="Avisos de examen" style="position:fixed;left:10px;bottom:8px;z-index:20;font-size:12px;padding:5px 10px">📌 Avisos</button><div class="syn" id="avi"><div style="max-width:560px;max-height:85vh;overflow:auto;font-size:14px;line-height:1.55"><h3 style="margin-top:0">Avisos de examen</h3>
 <p style="color:var(--mut);margin:0 0 10px">Sacados de las clases grabadas y de los apuntes de la comisión. Las grabaciones tienen ruido; ante la duda, confírmalo.</p>
@@ -75,11 +76,15 @@ const ST={k:'t14stats',get(){try{return JSON.parse(localStorage.getItem(this.k)|
 
 const $=i=>document.getElementById(i);
 const norm=s=>s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[()]/g,' ').replace(/\b(el|la|los|las|de|del)\b/g,' ').replace(/[^a-z0-9>-]+/g,' ').replace(/\buterin[oa]s?\b/g,'utero').replace(/\bovaric[oa]s?\b/g,'ovario').trim().replace(/\s+/g,' ');
+const SYNP0=[[/\ben forma (de )?embudo\b/g,'embudo'],[/\bforma (de )?embudo\b/g,'embudo'],[/\btrompa (de )?eustaquio\b/g,'trompa auditiva'],[/\bmembrana timpanica\b/g,'timpano']];
+const SYNG0={abertura:'orificio apertura ostium boca foramen agujero',embudo:'infundibulo infundibular',conducto:'ducto canal conductillo',paramesonefrico:'muller mulleriano mulleriana',mesonefrico:'wolff wolffiano wolffiana',craneal:'cefalico cefalica',porcion:'parte',primitivo:'primario primaria primitiva',visceral:'esplacnico esplacnica',parietal:'somatico somatica',yema:'esbozo brote primordio',prominencia:'protuberancia relieve',capa:'tunica',medio:'medial',rama:'ramo'};
+const SYNP=[],SYNG={};const SYNM={};for(const k in SYNG)SYNG[k].split(' ').forEach(w=>SYNM[w]=k);
+const syn=s=>{SYNP.forEach(([r,t])=>s=s.replace(r,t));return s.split(' ').map(w=>SYNM[w]||SYNM[w.replace(/e?s$/,'')]||w).join(' ')};
 function lev(a,b){const d=[...Array(b.length+1).keys()];for(let i=1;i<=a.length;i++){let p=d[0];d[0]=i;for(let j=1;j<=b.length;j++){const t=d[j];d[j]=Math.min(d[j]+1,d[j-1]+1,p+(a[i-1]===b[j-1]?0:1));p=t}}return d[b.length]}
 function judge(inp,ans){if(ans.includes('|'))return Math.max(...ans.split('|').map(a=>judge1(inp,a)));return judge1(inp,ans)}
 const shown=a=>a.split('|')[0]+(a.includes('|')?' · valen variantes':'');
 function judge1(inp,ans){const W={uno:1,primera:1,dos:2,segunda:2,tres:3,tercera:3,cuatro:4,cuarta:4,cinco:5,quinta:5,seis:6,sexta:6,siete:7,septima:7,ocho:8,octava:8,nueve:9,novena:9,diez:10,decima:10,once:11,undecima:11,doce:12,duodecima:12,dieciseis:16};const nm=x=>(norm(x).replace(/[a-z]+/g,w=>W[w]?' '+W[w]+' ':' ').match(/\d+/g)||[]).join(',');if(/\d/.test(ans)){const A=nm(ans);if(!inp.trim())return 0;if(nm(inp)===A)return 2;if(A.includes(',')&&nm(inp).split(',').filter(n=>A.split(',').includes(n)).length)return 1;return 0}
- const a=norm(inp),full=norm(ans),main=norm(ans.replace(/\(.*?\)/g,''))||full;if(!a)return 0;
+ const a=syn(norm(inp)),full=syn(norm(ans)),main=syn(norm(ans.replace(/\(.*?\)/g,'')))||full;if(!a)return 0;
  const tol=x=>Math.max(1,Math.floor(x.length/7));
  if(lev(a,full)<=tol(full)||lev(a,main)<=tol(main))return 2;
  const tk=a.split(' '),w=(main.split(' ').filter(x=>x.length>3).length?main:full).split(' ').filter(x=>x.length>3);
@@ -140,12 +145,16 @@ function fitFig(){const fig=$('fig'),pan=$('pan');if(!fig)return;const s=SLIDES[
 addEventListener('resize',()=>{try{fitFig()}catch(e){}});
 function step(){if(state==='ask')check();else if(state==='done'){pos++;ask()}}
 addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing&&document.getElementById('in')){e.preventDefault();step()}});
-function check(){state='done';const[si,bi]=deck[pos],ans0=SLIDES[si].ans[bi],v=$('in').value,r=judge(v,ans0),ans=shown(ans0);$('in').readOnly=true;$('go').textContent='Siguiente →';
- const sn=SLIDES[si].n;IT.rec(sn+'-'+bi,r);const key=si+'-'+bi;if(r<2&&$('mode').value==='smart'&&(again['n'+key]||0)<2){again['n'+key]=(again['n'+key]||0)+1;const at=Math.min(pos+4,deck.length);deck.splice(at,0,deck[pos]);for(const k in again)if(!isNaN(k)&&+k>=at)again[+k+1]=again[k],delete again[k];again[at]=1}
+function check(){state='done';const[si,bi]=deck[pos],ans0=SLIDES[si].ans[bi],v=$('in').value;let r=judge(v,ans0);const ans=shown(ans0);$('in').readOnly=true;$('go').textContent='Siguiente →';
+ const sn=SLIDES[si].n,id=sn+'-'+bi,acc=IT.get()['_acc:'+id];if(r<2&&v.trim()&&acc&&acc.v&&acc.v.includes(syn(norm(v))))r=2;const prev=IT.get()[id]?JSON.parse(JSON.stringify(IT.get()[id])):null;IT.rec(id,r);const key=si+'-'+bi;let at=-1;if(r<2&&$('mode').value==='smart'&&(again['n'+key]||0)<2){again['n'+key]=(again['n'+key]||0)+1;at=Math.min(pos+4,deck.length);deck.splice(at,0,deck[pos]);for(const k in again)if(!isNaN(k)&&+k>=at)again[+k+1]=again[k],delete again[k];again[at]=1}
+ const ovr=()=>{const b=$('ovr');if(!b)return;b.onclick=()=>{const d=IT.get();if(prev)d[id]=prev;else delete d[id];const o=d['_acc:'+id];d['_acc:'+id]={v:[...((o&&o.v)||[]),syn(norm(v))].slice(-20),t:Date.now()};IT.rec(id,2);ST.add(sn,0,r===1?.5:1);score+=r===1?.5:1;wrong.pop();
+  if(at>=0){deck.splice(at,1);delete again[at];const nx={};for(const k in again){if(!isNaN(k)&&+k>at)nx[+k-1]=again[k];else nx[k]=again[k]}again=nx;again['n'+key]--}
+  $('fb').innerHTML=`<span class="ok">Bien ✓ · dado por bueno</span><small>${ans} · la próxima vez se aceptará esta forma</small>`;try{updTot()}catch(e){}}};
+ const ob=v.trim()?'<button type="button" class="ovr" id="ovr">Lo he dicho con otras palabras · dar por bueno</button>':'';
  ST.add(sn,1,r===2?1:r===1?.5:0);
  if(r===2){score++;$('fb').innerHTML=`<span class="ok">Bien ✓</span><small>${ans}</small>`}
- else if(r===1){score+=.5;$('fb').innerHTML=`<span class="ok">Casi · medio punto</span><small>Completo: ${ans}</small>`;wrong.push(deck[pos])}
- else{const esc=v.replace(/[<>&]/g,'');$('fb').innerHTML=`<span class="no">${v.trim()?'No':'Era'}</span><small>${ans}${v.trim()?' · has escrito: «'+esc+'»':''}</small>`;wrong.push(deck[pos])}
+ else if(r===1){score+=.5;$('fb').innerHTML=`<span class="ok">Casi · medio punto</span><small>Completo: ${ans}</small>${ob}`;wrong.push(deck[pos]);ovr()}
+ else{const esc=v.replace(/[<>&]/g,'');$('fb').innerHTML=`<span class="no">${v.trim()?'No':'Era'}</span><small>${ans}${v.trim()?' · has escrito: «'+esc+'»':''}</small>${ob}`;wrong.push(deck[pos]);ovr()}
  $('bar').style.width=(pos+1)/deck.length*100+'%'}
 function end(){updTot();$('wrap').innerHTML=`<div class="end"><b>${score} / ${deck.length}</b>${wrong.length?wrong.length+' para repasar':'Pleno ✨'}<br>
  ${wrong.length?'<button id="rw">Repetir solo los fallos</button> ':''}<button id="ag" style="background:transparent;color:var(--fg);border:1px solid var(--line)">Otra vez todo</button></div>`;
@@ -198,5 +207,5 @@ tsel.onchange=()=>{fillSel(tsel.value);sel.onchange()};sel.onchange=()=>{try{loc
  window.t14sync=()=>{if(getC())sync()};draw();if(getC())sync();setInterval(()=>{if(!document.hidden&&getC()&&state!=='done')sync()},20000);document.addEventListener('visibilitychange',()=>{if(!document.hidden&&getC())sync()});
 })();
 
-(function(){const B='11232250';fetch('../version.txt?'+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():'').then(v=>{v=(v||'').trim();if(v&&v!==B&&sessionStorage.getItem('t14rl')!==v){sessionStorage.setItem('t14rl',v);location.replace(location.pathname+'?v='+v)}}).catch(()=>{})})();
+(function(){const B='11240910';fetch('../version.txt?'+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():'').then(v=>{v=(v||'').trim();if(v&&v!==B&&sessionStorage.getItem('t14rl')!==v){sessionStorage.setItem('t14rl',v);location.replace(location.pathname+'?v='+v)}}).catch(()=>{})})();
 </script></body></html>
