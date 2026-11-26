@@ -26,7 +26,6 @@ class AlarmReceiver : BroadcastReceiver() {
                     return
                 }
                 // 1) Arrancamos desde una pantalla invisible para que el micrófono no salga mudo.
-                Notifs.startFullScreen(c, title, minutes)
                 StartActivity.launch(c, title, minutes, restart = false)
                 // 2) Por si Android no deja abrir la pantalla: en 20 s arrancamos igualmente.
                 Scheduler.scheduleFallback(c, title, minutes)
@@ -67,11 +66,5 @@ class BootReceiver : BroadcastReceiver() {
         if (!RecorderService.isRecording) Store.recoverInterrupted(c)
         UploadJob.schedule(c)
         UpdateJob.schedule(c)
-        if ((intent.action == Intent.ACTION_BOOT_COMPLETED || intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) &&
-            !RecorderService.armed) {
-            // Tras reiniciar, Android no deja coger el micrófono hasta abrir la app una vez.
-            Notifs.alert(c, "Abre la grabadora una vez",
-                "Se ha reiniciado o actualizado. Toca aquí para dejarla lista para las clases.")
-        }
     }
 }
