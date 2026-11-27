@@ -1,1 +1,5 @@
+<<<<<<< HEAD
 11271955
+=======
+11271950
+>>>>>>> parent of 8979bcd (Revert "Temas 18-20: reducir casillas segun comision y transcripciones")
